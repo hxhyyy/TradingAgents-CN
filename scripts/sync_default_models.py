@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
-QUICK_MODEL = "writer/palmyra-fin-70b-32k"
+QUICK_MODEL = "stockmark/stockmark-2-100b-instruct"
 DEEP_MODEL = "stockmark/stockmark-2-100b-instruct"
 
 load_dotenv()
