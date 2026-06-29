@@ -13,7 +13,9 @@ from pymongo import MongoClient
 
 API_KEY = os.getenv("NVIDIA_API_KEY") or os.getenv("CUSTOM_OPENAI_API_KEY")
 BASE_URL = os.getenv("CUSTOM_OPENAI_BASE_URL", "https://integrate.api.nvidia.com/v1")
-DEFAULT_MODEL = "meta/llama-3.1-8b-instruct"
+QUICK_MODEL = "nvidia/nemotron-3-super-120b-a12b"
+DEEP_MODEL = "stockmark/stockmark-2-100b-instruct"
+DEFAULT_MODEL = DEEP_MODEL
 DB_NAME = "tradingagentscn"
 PROVIDER = "custom_openai"
 
@@ -183,8 +185,8 @@ def _ensure_system_llm_configs(db, base_url: str, model_ids: list[str]) -> tuple
         {
             "$set": {
                 "llm_configs": kept + nvidia_configs,
-                "quick_analysis_model": DEFAULT_MODEL,
-                "deep_analysis_model": DEFAULT_MODEL,
+                "quick_analysis_model": QUICK_MODEL,
+                "deep_analysis_model": DEEP_MODEL,
                 "default_provider": PROVIDER,
                 "default_model": DEFAULT_MODEL,
             }

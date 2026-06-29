@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
-QUICK_MODEL = "stockmark/stockmark-2-100b-instruct"
+QUICK_MODEL = "nvidia/nemotron-3-super-120b-a12b"
 DEEP_MODEL = "stockmark/stockmark-2-100b-instruct"
 
 load_dotenv()
