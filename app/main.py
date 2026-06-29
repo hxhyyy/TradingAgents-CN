@@ -219,6 +219,14 @@ async def lifespan(app: FastAPI):
     setup_logging()
     logger = logging.getLogger("app.main")
 
+    # 将 .env 中的密钥注入 os.environ，供 config_bridge 与 TradingAgents 核心库读取
+    try:
+        from dotenv import load_dotenv
+        from pathlib import Path
+        load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+    except Exception as e:
+        logger.warning(f"⚠️  加载 .env 到环境变量失败: {e}")
+
     # 验证启动配置
     try:
         from app.core.startup_validator import validate_startup_config

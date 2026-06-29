@@ -182,46 +182,50 @@ def bridge_config_to_env():
             data_source_configs = unified_config.get_data_source_configs()
 
         for ds_config in data_source_configs:
-            if ds_config.enabled and ds_config.api_key:
-                # Tushare Token
-                # 🔥 优先级：数据库配置 > .env 文件（用户在 Web 后台修改后立即生效）
-                if ds_config.type.value == 'tushare':
-                    existing_token = os.getenv('TUSHARE_TOKEN')
+            if not ds_config.enabled:
+                continue
 
-                    # 优先使用数据库配置
-                    if ds_config.api_key and not ds_config.api_key.startswith("your_"):
-                        os.environ['TUSHARE_TOKEN'] = ds_config.api_key
-                        logger.info(f"  ✓ 使用数据库中的 TUSHARE_TOKEN (长度: {len(ds_config.api_key)})")
-                        if existing_token and existing_token != ds_config.api_key:
-                            logger.info(f"  ℹ️  已覆盖 .env 文件中的 TUSHARE_TOKEN")
-                    # 降级到 .env 文件配置
-                    elif existing_token and not existing_token.startswith("your_"):
-                        logger.info(f"  ✓ 使用 .env 文件中的 TUSHARE_TOKEN (长度: {len(existing_token)})")
-                        logger.info(f"  ℹ️  数据库中未配置有效的 TUSHARE_TOKEN，使用 .env 降级方案")
-                    else:
-                        logger.warning(f"  ⚠️  TUSHARE_TOKEN 在数据库和 .env 中都未配置有效值")
-                        continue
-                    bridged_count += 1
+            # Tushare Token
+            # 🔥 优先级：数据库配置 > .env 文件（用户在 Web 后台修改后立即生效）
+            if ds_config.type.value == 'tushare':
+                existing_token = os.getenv('TUSHARE_TOKEN')
 
-                # FinnHub API Key
-                # 🔥 优先级：数据库配置 > .env 文件
-                elif ds_config.type.value == 'finnhub':
-                    existing_key = os.getenv('FINNHUB_API_KEY')
+                # 优先使用数据库配置
+                if ds_config.api_key and not ds_config.api_key.startswith("your_"):
+                    os.environ['TUSHARE_TOKEN'] = ds_config.api_key
+                    logger.info(f"  ✓ 使用数据库中的 TUSHARE_TOKEN (长度: {len(ds_config.api_key)})")
+                    if existing_token and existing_token != ds_config.api_key:
+                        logger.info(f"  ℹ️  已覆盖 .env 文件中的 TUSHARE_TOKEN")
+                # 降级到 .env 文件配置
+                elif existing_token and not existing_token.startswith("your_"):
+                    os.environ['TUSHARE_TOKEN'] = existing_token
+                    logger.info(f"  ✓ 使用 .env 文件中的 TUSHARE_TOKEN (长度: {len(existing_token)})")
+                    logger.info(f"  ℹ️  数据库中未配置有效的 TUSHARE_TOKEN，使用 .env 降级方案")
+                else:
+                    logger.warning(f"  ⚠️  TUSHARE_TOKEN 在数据库和 .env 中都未配置有效值")
+                    continue
+                bridged_count += 1
 
-                    # 优先使用数据库配置
-                    if ds_config.api_key and not ds_config.api_key.startswith("your_"):
-                        os.environ['FINNHUB_API_KEY'] = ds_config.api_key
-                        logger.info(f"  ✓ 使用数据库中的 FINNHUB_API_KEY (长度: {len(ds_config.api_key)})")
-                        if existing_key and existing_key != ds_config.api_key:
-                            logger.info(f"  ℹ️  已覆盖 .env 文件中的 FINNHUB_API_KEY")
-                    # 降级到 .env 文件配置
-                    elif existing_key and not existing_key.startswith("your_"):
-                        logger.info(f"  ✓ 使用 .env 文件中的 FINNHUB_API_KEY (长度: {len(existing_key)})")
-                        logger.info(f"  ℹ️  数据库中未配置有效的 FINNHUB_API_KEY，使用 .env 降级方案")
-                    else:
-                        logger.warning(f"  ⚠️  FINNHUB_API_KEY 在数据库和 .env 中都未配置有效值")
-                        continue
-                    bridged_count += 1
+            # FinnHub API Key
+            # 🔥 优先级：数据库配置 > .env 文件
+            elif ds_config.type.value == 'finnhub':
+                existing_key = os.getenv('FINNHUB_API_KEY')
+
+                # 优先使用数据库配置
+                if ds_config.api_key and not ds_config.api_key.startswith("your_"):
+                    os.environ['FINNHUB_API_KEY'] = ds_config.api_key
+                    logger.info(f"  ✓ 使用数据库中的 FINNHUB_API_KEY (长度: {len(ds_config.api_key)})")
+                    if existing_key and existing_key != ds_config.api_key:
+                        logger.info(f"  ℹ️  已覆盖 .env 文件中的 FINNHUB_API_KEY")
+                # 降级到 .env 文件配置
+                elif existing_key and not existing_key.startswith("your_"):
+                    os.environ['FINNHUB_API_KEY'] = existing_key
+                    logger.info(f"  ✓ 使用 .env 文件中的 FINNHUB_API_KEY (长度: {len(existing_key)})")
+                    logger.info(f"  ℹ️  数据库中未配置有效的 FINNHUB_API_KEY，使用 .env 降级方案")
+                else:
+                    logger.warning(f"  ⚠️  FINNHUB_API_KEY 在数据库和 .env 中都未配置有效值")
+                    continue
+                bridged_count += 1
 
         # 4. 桥接数据源细节配置（超时、重试、缓存等）
         bridged_count += _bridge_datasource_details(data_source_configs)
