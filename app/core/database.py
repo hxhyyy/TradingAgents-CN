@@ -82,6 +82,7 @@ class DatabaseManager:
                 max_connections=settings.REDIS_MAX_CONNECTIONS,
                 retry_on_timeout=settings.REDIS_RETRY_ON_TIMEOUT,
                 decode_responses=True,
+                protocol=2,
                 socket_connect_timeout=5,  # 5秒连接超时
                 socket_timeout=10,  # 10秒套接字超时
             )
