@@ -41,12 +41,24 @@ except ImportError as e:
 # 检查 pdfkit（唯一的 PDF 生成工具）
 PDFKIT_AVAILABLE = False
 PDFKIT_ERROR = None
+PDFKIT_CONFIG = None
+
+
+def _get_pdfkit_configuration():
+    """获取 pdfkit 配置，支持通过 WKHTMLTOPDF_PATH 指定 wkhtmltopdf 路径。"""
+    import pdfkit
+
+    wk_path = os.environ.get("WKHTMLTOPDF_PATH", "").strip()
+    if wk_path and Path(wk_path).is_file():
+        return pdfkit.configuration(wkhtmltopdf=wk_path)
+    return pdfkit.configuration()
+
 
 try:
     import pdfkit
     # 检查 wkhtmltopdf 是否安装
     try:
-        pdfkit.configuration()
+        PDFKIT_CONFIG = _get_pdfkit_configuration()
         PDFKIT_AVAILABLE = True
         logger.info("✅ pdfkit + wkhtmltopdf 可用（PDF 生成工具）")
     except Exception as e:
@@ -627,7 +639,12 @@ pre, code {
         }
 
         # 生成 PDF
-        pdf_bytes = pdfkit.from_string(html_content, False, options=options)
+        pdf_bytes = pdfkit.from_string(
+            html_content,
+            False,
+            options=options,
+            configuration=PDFKIT_CONFIG or _get_pdfkit_configuration(),
+        )
 
         logger.info(f"✅ pdfkit PDF 生成成功，大小: {len(pdf_bytes)} 字节")
         return pdf_bytes

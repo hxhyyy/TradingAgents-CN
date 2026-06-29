@@ -1,0 +1,33 @@
+Author: Ashish Kulkarni
+Commands:
+- wkhtmltoimage
+- wkhtmltopdf
+FileExtensions:
+- html
+InstallerLocale: en-US
+InstallerType: nullsoft
+Installers:
+- Architecture: x64
+  InstallerSha256: 1EFCFAF8472871268FD399865A3E62B435B91D4413009B80830EAAFF7A57D088
+  InstallerUrl: https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox-0.12.6-1.msvc2015-win64.exe
+  ProductCode: wkhtmltopdf
+License: GPL
+LicenseUrl: https://github.com/wkhtmltopdf/wkhtmltopdf/blob/master/LICENSE
+ManifestType: merged
+ManifestVersion: 1.9.0
+MinimumOSVersion: 10.0.0.0
+Moniker: wkhtmltox
+PackageIdentifier: wkhtmltopdf.wkhtmltox
+PackageLocale: en-US
+PackageName: wkhtmltox
+PackageUrl: https://wkhtmltopdf.org
+PackageVersion: 0.12.6-1
+Publisher: wkhtmltopdf
+PublisherSupportUrl: https://github.com/wkhtmltopdf/packaging/issues
+PublisherUrl: https://wkhtmltopdf.org
+Scope: machine
+ShortDescription: Convert HTML to PDF using Webkit (QtWebKit)
+Tags:
+- html
+- pdf
+UpgradeBehavior: install
