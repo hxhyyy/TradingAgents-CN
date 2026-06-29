@@ -1206,6 +1206,38 @@ class SimpleAnalysisService:
             market_type = request.parameters.market_type if request.parameters else "A股"
             logger.info(f"📊 [市场类型] 使用市场类型: {market_type}")
 
+            # 从 MongoDB 读取模型 timeout / max_tokens 等参数
+            quick_model_config = None
+            deep_model_config = None
+            try:
+                from pymongo import MongoClient
+                from app.core.config import settings
+
+                client = MongoClient(settings.MONGO_URI)
+                db = client[settings.MONGO_DB]
+                doc = db.system_configs.find_one({"is_active": True}, sort=[("version", -1)])
+                if doc and "llm_configs" in doc:
+                    for llm_config in doc["llm_configs"]:
+                        if llm_config.get("model_name") == quick_model:
+                            quick_model_config = {
+                                "max_tokens": llm_config.get("max_tokens", 4000),
+                                "temperature": llm_config.get("temperature", 0.7),
+                                "timeout": llm_config.get("timeout", 180),
+                                "retry_times": llm_config.get("retry_times", 3),
+                                "api_base": llm_config.get("api_base"),
+                            }
+                        if llm_config.get("model_name") == deep_model:
+                            deep_model_config = {
+                                "max_tokens": llm_config.get("max_tokens", 4000),
+                                "temperature": llm_config.get("temperature", 0.7),
+                                "timeout": llm_config.get("timeout", 180),
+                                "retry_times": llm_config.get("retry_times", 3),
+                                "api_base": llm_config.get("api_base"),
+                            }
+                client.close()
+            except Exception as e:
+                logger.warning(f"⚠️ 从 MongoDB 读取模型配置失败: {e}，将使用默认参数")
+
             # 创建分析配置（支持混合模式）
             config = create_analysis_config(
                 research_depth=research_depth,
@@ -1213,7 +1245,9 @@ class SimpleAnalysisService:
                 quick_model=quick_model,
                 deep_model=deep_model,
                 llm_provider=quick_provider,  # 主要使用快速模型的供应商
-                market_type=market_type  # 使用前端传递的市场类型
+                market_type=market_type,  # 使用前端传递的市场类型
+                quick_model_config=quick_model_config,
+                deep_model_config=deep_model_config,
             )
 
             # 🔧 添加混合模式配置

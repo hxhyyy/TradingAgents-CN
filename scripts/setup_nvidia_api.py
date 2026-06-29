@@ -99,6 +99,17 @@ def _recommended_depths(level: int) -> list[str]:
     return ["深度", "全面"]
 
 
+def _timeout_for_level(level: int) -> int:
+    """Per-request LLM timeout (seconds). Large NIM models need more headroom."""
+    if level >= 5:
+        return 900
+    if level >= 4:
+        return 600
+    if level >= 3:
+        return 300
+    return 180
+
+
 def _model_category(model_id: str, chat: bool) -> str:
     if chat:
         return "chat"
@@ -139,7 +150,7 @@ def _llm_config_entry(model_id: str, base_url: str) -> dict:
         "api_base": base_url,
         "max_tokens": 4000,
         "temperature": 0.7,
-        "timeout": 180 if level >= 4 else 120,
+        "timeout": _timeout_for_level(level),
         "retry_times": 3,
         "enabled": chat,
         "description": "NVIDIA NIM",
