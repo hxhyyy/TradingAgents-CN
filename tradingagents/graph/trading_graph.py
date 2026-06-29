@@ -394,7 +394,12 @@ class TradingAgentsGraph:
             if not custom_api_key:
                 raise ValueError("使用自定义OpenAI端点需要设置CUSTOM_OPENAI_API_KEY环境变量")
 
-            custom_base_url = self.config.get("custom_openai_base_url", "https://api.openai.com/v1")
+            custom_base_url = (
+                self.config.get("custom_openai_base_url")
+                or self.config.get("backend_url")
+                or os.getenv("CUSTOM_OPENAI_BASE_URL")
+                or "https://api.openai.com/v1"
+            )
             logger.info(f"🔧 [自定义OpenAI] 使用端点: {custom_base_url}")
             self.deep_thinking_llm, self.quick_thinking_llm = _create_provider_pair(
                 provider="custom_openai",

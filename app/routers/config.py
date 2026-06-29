@@ -26,6 +26,7 @@ from app.services.operation_log_service import log_operation
 from app.models.operation_log import ActionType
 from app.services.config_provider import provider as config_provider
 from app.core.response import ok
+from app.utils.api_key_utils import is_valid_api_key, get_env_api_key_for_provider
 
 
 
@@ -86,6 +87,23 @@ async def reload_config(current_user: dict = Depends(get_current_user)):
 
 # ===== 方案A：敏感字段响应脱敏 & 请求清洗 =====
 from copy import deepcopy
+
+def _provider_has_usable_api_key(provider: LLMProvider) -> bool:
+    """厂家是否在数据库或环境变量中配置了有效 API Key。"""
+    if is_valid_api_key(provider.api_key):
+        return True
+    return get_env_api_key_for_provider(provider.name) is not None
+
+
+def _llm_config_has_usable_api_key(llm_config: LLMConfig, provider_map: Dict[str, LLMProvider]) -> bool:
+    """模型是否可用：模型级 Key，或其厂家已配置有效 Key。"""
+    if is_valid_api_key(llm_config.api_key):
+        return True
+    provider = provider_map.get(llm_config.provider)
+    if provider and _provider_has_usable_api_key(provider):
+        return True
+    return False
+
 
 def _sanitize_llm_configs(items):
     try:
@@ -1006,11 +1024,14 @@ async def get_llm_configs(
         # 获取所有供应商信息，用于过滤被禁用供应商的模型
         providers = await config_service.get_llm_providers()
         active_provider_names = {p.name for p in providers if p.is_active}
+        provider_map = {p.name: p for p in providers}
 
-        # 过滤：只返回启用的模型 且 供应商也启用的模型
+        # 过滤：只返回启用的模型、供应商已启用、且已配置有效 API Key 的模型
         filtered_configs = [
             llm_config for llm_config in config.llm_configs
-            if llm_config.enabled and llm_config.provider in active_provider_names
+            if llm_config.enabled
+            and llm_config.provider in active_provider_names
+            and _llm_config_has_usable_api_key(llm_config, provider_map)
         ]
 
         sorted_configs = _sort_llm_configs_by_newest(filtered_configs)

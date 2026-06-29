@@ -372,26 +372,22 @@ const clearStocks = () => {
 // 初始化模型设置
 const initializeModelSettings = async () => {
   try {
-    const sortModelsByNewest = (configs: any[]) => {
-      const getTimestamp = (config: any) => {
-        const timeValue = config.created_at || config.updated_at
-        const timestamp = timeValue ? new Date(timeValue).getTime() : 0
-        return Number.isNaN(timestamp) ? 0 : timestamp
-      }
-
-      return [...configs].sort((a, b) => getTimestamp(b) - getTimestamp(a))
-    }
+    const { sortModelsByNewest, resolveModelSelection } = await import('@/utils/availableModels')
 
     // 获取默认模型
     const defaultModels = await configApi.getDefaultModels()
-    modelSettings.value.quickAnalysisModel = defaultModels.quick_analysis_model
-    modelSettings.value.deepAnalysisModel = defaultModels.deep_analysis_model
 
-    // 获取所有可用的模型列表
+    // 获取已配置 API Key 的可用模型列表（后端已过滤）
     const llmConfigs = await configApi.getLLMConfigs()
-    availableModels.value = sortModelsByNewest(
-      llmConfigs.filter((config: any) => config.enabled)
+    availableModels.value = sortModelsByNewest(llmConfigs)
+
+    const resolved = resolveModelSelection(
+      availableModels.value,
+      defaultModels.quick_analysis_model,
+      defaultModels.deep_analysis_model
     )
+    modelSettings.value.quickAnalysisModel = resolved.quickAnalysisModel
+    modelSettings.value.deepAnalysisModel = resolved.deepAnalysisModel
 
     console.log('✅ 加载模型配置成功:', {
       quick: modelSettings.value.quickAnalysisModel,

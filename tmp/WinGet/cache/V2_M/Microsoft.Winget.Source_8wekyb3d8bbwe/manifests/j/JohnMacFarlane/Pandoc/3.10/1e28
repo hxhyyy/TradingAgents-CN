@@ -1,0 +1,100 @@
+Author: John Mac Farlane
+Copyright: Copyright (C) 2006-2024 John MacFarlane <jgm at berkeley dot edu>
+CopyrightUrl: https://github.com/jgm/pandoc/blob/master/COPYRIGHT
+Documentations:
+- DocumentLabel: Wiki
+  DocumentUrl: https://github.com/jgm/pandoc/wiki
+Installers:
+- Architecture: x64
+  ArchiveBinariesDependOnPath: true
+  InstallerSha256: BB808D00FD58762299D64582A9B4C3E4B106CD929E62C5F19BCDCB496F1E54AE
+  InstallerType: zip
+  InstallerUrl: https://github.com/jgm/pandoc/releases/download/3.10/pandoc-3.10-windows-x86_64.zip
+  NestedInstallerFiles:
+  - RelativeFilePath: pandoc-3.10\pandoc.exe
+  NestedInstallerType: portable
+- AppsAndFeaturesEntries:
+  - DisplayName: Pandoc 3.10
+    ProductCode: '{67A1B765-BC26-43A9-BBF2-680E79D9F8F0}'
+    UpgradeCode: '{A68E8EF6-ABB1-4F22-A3C5-68DFDF0AB562}'
+  Architecture: x64
+  InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+  InstallationMetadata:
+    DefaultInstallLocation: '%ProgramFiles%/Pandoc'
+  InstallerLocale: en-US
+  InstallerSha256: 5334F560AFB99EFC2917C95DDD6D4337F4562F57B0122839B611854E2A6678E0
+  InstallerSwitches:
+    Custom: ALLUSERS=2
+  InstallerType: wix
+  InstallerUrl: https://github.com/jgm/pandoc/releases/download/3.10/pandoc-3.10-windows-x86_64.msi
+  ProductCode: '{67A1B765-BC26-43A9-BBF2-680E79D9F8F0}'
+  Scope: user
+- AppsAndFeaturesEntries:
+  - DisplayName: Pandoc 3.10
+    ProductCode: '{67A1B765-BC26-43A9-BBF2-680E79D9F8F0}'
+    UpgradeCode: '{A68E8EF6-ABB1-4F22-A3C5-68DFDF0AB562}'
+  Architecture: x64
+  InstallModes:
+  - interactive
+  - silent
+  - silentWithProgress
+  InstallationMetadata:
+    DefaultInstallLocation: '%ProgramFiles%/Pandoc'
+  InstallerLocale: en-US
+  InstallerSha256: 5334F560AFB99EFC2917C95DDD6D4337F4562F57B0122839B611854E2A6678E0
+  InstallerSwitches:
+    Custom: ALLUSERS=1
+  InstallerType: wix
+  InstallerUrl: https://github.com/jgm/pandoc/releases/download/3.10/pandoc-3.10-windows-x86_64.msi
+  ProductCode: '{67A1B765-BC26-43A9-BBF2-680E79D9F8F0}'
+  Scope: machine
+License: GPL-2.0
+LicenseUrl: https://github.com/jgm/pandoc/blob/master/COPYRIGHT
+Localization:
+- Author: John Mac Farlane
+  Copyright: Copyright (C) 2006-2024 John MacFarlane <jgm at berkeley dot edu>
+  CopyrightUrl: https://github.com/jgm/pandoc/blob/master/COPYRIGHT
+  Documentations:
+  - DocumentLabel: Wiki
+    DocumentUrl: https://github.com/jgm/pandoc/wiki
+  License: GPL-2.0-or-later
+  LicenseUrl: https://github.com/jgm/pandoc/blob/master/COPYRIGHT
+  PackageLocale: zh-CN
+  PackageName: Pandoc
+  PackageUrl: https://pandoc.org/
+  Publisher: John MacFarlane
+  PublisherSupportUrl: https://github.com/jgm/pandoc/issues
+  PublisherUrl: https://github.com/jgm/pandoc
+  ShortDescription: "\u5982\u679C\u4F60\u9700\u8981\u5C06\u6587\u4EF6\u4ECE\u4E00\u79CD\u6807\u8BB0\u683C\u5F0F\u8F6C\u6362\u4E3A\u53E6\u4E00\u79CD\u683C\u5F0F\uFF0Cpandoc\u5C31\u662F\u4F60\u7684\u745E\u58EB\u519B\u5200\u3002"
+  Tags:
+  - doc
+  - docs
+  - markdown
+  - pandoc
+  - "\u683C\u5F0F\u8F6C\u6362"
+  - "\u8F6C\u6362"
+  - "\u8F6C\u6362\u5668"
+ManifestType: merged
+ManifestVersion: 1.12.0
+PackageIdentifier: JohnMacFarlane.Pandoc
+PackageLocale: en-US
+PackageName: Pandoc
+PackageUrl: https://pandoc.org/
+PackageVersion: 3.10
+Publisher: John MacFarlane
+PublisherSupportUrl: https://github.com/jgm/pandoc/issues
+PublisherUrl: https://github.com/jgm/pandoc
+ReleaseDate: 2026-06-04
+ReleaseNotesUrl: https://github.com/jgm/pandoc/releases/tag/3.10
+ShortDescription: If you need to convert files from one markup format into another,
+  pandoc is your swiss-army knife.
+Tags:
+- converter
+- doc
+- docs
+- markdown
+- pandoc
+UpgradeBehavior: uninstallPrevious
