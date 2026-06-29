@@ -8,9 +8,11 @@ export const normalizeMarketForAnalysis = (market: any): string => {
   ].includes(cn) || ['CN', 'SH', 'SZ', 'SSE', 'SZSE'].includes(upper)
   const isHK = ['港股', '港交所'].includes(cn) || ['HK', 'HKEX'].includes(upper)
   const isUS = ['美股', '纳斯达克', '纽交所'].includes(cn) || ['US', 'NASDAQ', 'NYSE', 'AMEX'].includes(upper)
+  const isCrypto = ['加密货币', '数字货币', '加密'].includes(cn) || ['CRYPTO', 'BTC'].includes(upper)
   if (isA) return 'A股'
   if (isHK) return '港股'
   if (isUS) return '美股'
+  if (isCrypto) return '加密货币'
   // 默认按A股处理
   return 'A股'
 }
@@ -49,6 +51,11 @@ export const exchangeCodeToMarket = (exchangeCode: string): string => {
  */
 export const getMarketByStockCode = (stockCode: string): string => {
   const code = String(stockCode ?? '').trim().toUpperCase()
+
+  // 加密货币
+  if (code === 'BTC' || code === 'BTCUSDT') {
+    return '加密货币'
+  }
 
   // 港股：明确带 .HK 后缀
   if (code.endsWith('.HK')) {

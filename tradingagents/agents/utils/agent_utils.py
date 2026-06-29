@@ -23,6 +23,14 @@ from tradingagents.utils.logging_manager import get_logger
 logger = get_logger('agents')
 
 
+def _resolve_market_info(ticker: str) -> dict:
+    """根据 Toolkit 配置中的 market_type 解析市场（加密货币与股票隔离）。"""
+    from tradingagents.utils.stock_utils import StockUtils
+
+    market_type_hint = Toolkit._config.get("market_type")
+    return StockUtils.get_analysis_market_info(ticker, market_type_hint)
+
+
 def create_msg_delete():
     def delete_messages(state):
         """Clear messages and add placeholder for Anthropic compatibility"""
@@ -797,13 +805,14 @@ class Toolkit:
             from tradingagents.utils.stock_utils import StockUtils
             from datetime import datetime, timedelta
 
-            # 自动识别股票类型
-            market_info = StockUtils.get_market_info(ticker)
+            market_info = _resolve_market_info(ticker)
+            ticker = market_info.get("ticker", ticker)
             is_china = market_info['is_china']
             is_hk = market_info['is_hk']
             is_us = market_info['is_us']
+            is_crypto = market_info.get('is_crypto', False)
 
-            logger.info(f"🔍 [股票代码追踪] StockUtils.get_market_info 返回的市场信息: {market_info}")
+            logger.info(f"🔍 [股票代码追踪] 市场信息: {market_info}")
             logger.info(f"📊 [统一基本面工具] 股票类型: {market_info['market_name']}")
             logger.info(f"📊 [统一基本面工具] 货币: {market_info['currency_name']} ({market_info['currency_symbol']})")
 
@@ -850,7 +859,17 @@ class Toolkit:
 
             result_data = []
 
-            if is_china:
+            if is_crypto:
+                logger.info(f"₿ [统一基本面工具] 处理加密货币数据...")
+                try:
+                    from tradingagents.dataflows.providers.crypto.binance import get_crypto_fundamentals_summary
+                    crypto_data = get_crypto_fundamentals_summary(ticker)
+                    result_data.append(f"## 加密货币市场概况\n{crypto_data}")
+                except Exception as e:
+                    logger.error(f"❌ [统一基本面工具] 加密货币数据获取失败: {e}")
+                    result_data.append(f"## 加密货币市场概况\n获取失败: {e}")
+
+            elif is_china:
                 # 中国A股：基本面分析优化策略 - 只获取必要的当前价格和基本面数据
                 logger.info(f"🇨🇳 [统一基本面工具] 处理A股数据，数据深度: {data_depth}...")
                 logger.info(f"🔍 [股票代码追踪] 进入A股处理分支，ticker: '{ticker}'")
@@ -1071,20 +1090,29 @@ class Toolkit:
         logger.info(f"📈 [统一市场工具] 分析股票: {ticker}")
 
         try:
-            from tradingagents.utils.stock_utils import StockUtils
-
-            # 自动识别股票类型
-            market_info = StockUtils.get_market_info(ticker)
+            market_info = _resolve_market_info(ticker)
+            ticker = market_info.get("ticker", ticker)
             is_china = market_info['is_china']
             is_hk = market_info['is_hk']
             is_us = market_info['is_us']
+            is_crypto = market_info.get('is_crypto', False)
 
             logger.info(f"📈 [统一市场工具] 股票类型: {market_info['market_name']}")
             logger.info(f"📈 [统一市场工具] 货币: {market_info['currency_name']} ({market_info['currency_symbol']}")
 
             result_data = []
 
-            if is_china:
+            if is_crypto:
+                logger.info(f"₿ [统一市场工具] 处理加密货币市场数据...")
+                try:
+                    from tradingagents.dataflows.providers.crypto.binance import get_crypto_market_data
+                    crypto_data = get_crypto_market_data(ticker, start_date, end_date)
+                    result_data.append(f"## 加密货币市场数据\n{crypto_data}")
+                except Exception as e:
+                    logger.error(f"❌ [统一市场工具] 加密货币数据获取失败: {e}")
+                    result_data.append(f"## 加密货币市场数据\n获取失败: {e}")
+
+            elif is_china:
                 # 中国A股：使用中国股票数据源
                 logger.info(f"🇨🇳 [统一市场工具] 处理A股市场数据...")
 
@@ -1175,10 +1203,12 @@ class Toolkit:
             from datetime import datetime, timedelta
 
             # 自动识别股票类型
-            market_info = StockUtils.get_market_info(ticker)
+            market_info = _resolve_market_info(ticker)
+            ticker = market_info.get("ticker", ticker)
             is_china = market_info['is_china']
             is_hk = market_info['is_hk']
             is_us = market_info['is_us']
+            is_crypto = market_info.get('is_crypto', False)
 
             logger.info(f"📰 [统一新闻工具] 股票类型: {market_info['market_name']}")
 
@@ -1189,7 +1219,15 @@ class Toolkit:
 
             result_data = []
 
-            if is_china or is_hk:
+            if is_crypto:
+                logger.info(f"₿ [统一新闻工具] 处理比特币新闻...")
+                try:
+                    finnhub_news = interface.get_finnhub_news("BINANCE:BTCUSDT", curr_date, 7)
+                    result_data.append(f"## 比特币相关新闻 (Finnhub)\n{finnhub_news}")
+                except Exception as e:
+                    result_data.append(f"## 比特币相关新闻\n获取失败: {e}")
+
+            elif is_china or is_hk:
                 # 中国A股和港股：使用AKShare东方财富新闻和Google新闻（中文搜索）
                 logger.info(f"🇨🇳🇭🇰 [统一新闻工具] 处理中文新闻...")
 
@@ -1308,16 +1346,26 @@ class Toolkit:
             from tradingagents.utils.stock_utils import StockUtils
 
             # 自动识别股票类型
-            market_info = StockUtils.get_market_info(ticker)
+            market_info = _resolve_market_info(ticker)
+            ticker = market_info.get("ticker", ticker)
             is_china = market_info['is_china']
             is_hk = market_info['is_hk']
             is_us = market_info['is_us']
+            is_crypto = market_info.get('is_crypto', False)
 
             logger.info(f"😊 [统一情绪工具] 股票类型: {market_info['market_name']}")
 
             result_data = []
 
-            if is_china or is_hk:
+            if is_crypto:
+                logger.info(f"₿ [统一情绪工具] 处理比特币社区情绪...")
+                try:
+                    sentiment_data = interface.get_reddit_company_news("BTC", curr_date, 7, 5)
+                    result_data.append(f"## 比特币社区情绪 (Reddit)\n{sentiment_data}")
+                except Exception as e:
+                    result_data.append(f"## 比特币社区情绪\n获取失败: {e}")
+
+            elif is_china or is_hk:
                 # 中国A股和港股：使用社交媒体情绪分析
                 logger.info(f"🇨🇳🇭🇰 [统一情绪工具] 处理中文市场情绪...")
 

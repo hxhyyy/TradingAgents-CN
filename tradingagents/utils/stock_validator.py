@@ -65,7 +65,7 @@ class StockDataPreparer:
 
         Args:
             stock_code: 股票代码
-            market_type: 市场类型 ("A股", "港股", "美股", "auto")
+            market_type: 市场类型 ("A股", "港股", "美股", "加密货币", "auto")
             period_days: 历史数据时长（天），默认使用类初始化时的值
             analysis_date: 分析日期，默认为今天
 
@@ -137,7 +137,16 @@ class StockDataPreparer:
                     suggestion="请输入4-5位数字.HK格式（如：0700.HK）或4-5位数字（如：0700）"
                 )
         elif market_type == "美股":
-            if not re.match(r'^[A-Z]{1,5}$', stock_code.upper()):
+            stock_code_upper = stock_code.upper()
+            if stock_code_upper == "BTC":
+                return StockDataPreparationResult(
+                    is_valid=False,
+                    stock_code=stock_code,
+                    market_type="美股",
+                    error_message="BTC 是比特币代码，不是美股",
+                    suggestion="请在「市场类型」中选择「加密货币」，然后输入 BTC 或 BTCUSDT"
+                )
+            if not re.match(r'^[A-Z]{1,5}$', stock_code_upper):
                 return StockDataPreparationResult(
                     is_valid=False,
                     stock_code=stock_code,
@@ -145,6 +154,21 @@ class StockDataPreparer:
                     error_message="美股代码格式错误，应为1-5位字母",
                     suggestion="请输入1-5位字母的美股代码，如：AAPL、TSLA"
                 )
+        elif market_type == "加密货币":
+            from tradingagents.dataflows.providers.crypto.binance import (
+                is_supported_crypto,
+                normalize_crypto_symbol,
+            )
+
+            if not is_supported_crypto(stock_code):
+                return StockDataPreparationResult(
+                    is_valid=False,
+                    stock_code=stock_code,
+                    market_type="加密货币",
+                    error_message="加密货币代码格式错误",
+                    suggestion="当前仅支持 BTC 或 BTCUSDT（比特币）"
+                )
+            stock_code = normalize_crypto_symbol(stock_code)
         
         return StockDataPreparationResult(
             is_valid=True,
@@ -271,13 +295,15 @@ class StockDataPreparer:
                 return self._prepare_hk_stock_data(stock_code, period_days, analysis_date)
             elif market_type == "美股":
                 return self._prepare_us_stock_data(stock_code, period_days, analysis_date)
+            elif market_type == "加密货币":
+                return self._prepare_crypto_data(stock_code, period_days, analysis_date)
             else:
                 return StockDataPreparationResult(
                     is_valid=False,
                     stock_code=stock_code,
                     market_type=market_type,
                     error_message=f"不支持的市场类型: {market_type}",
-                    suggestion="请选择支持的市场类型：A股、港股、美股"
+                    suggestion="请选择支持的市场类型：A股、港股、美股、加密货币"
                 )
         except Exception as e:
             logger.error(f"❌ [数据准备] 数据准备异常: {e}")
@@ -301,13 +327,15 @@ class StockDataPreparer:
                 return self._prepare_hk_stock_data(stock_code, period_days, analysis_date)
             elif market_type == "美股":
                 return self._prepare_us_stock_data(stock_code, period_days, analysis_date)
+            elif market_type == "加密货币":
+                return self._prepare_crypto_data(stock_code, period_days, analysis_date)
             else:
                 return StockDataPreparationResult(
                     is_valid=False,
                     stock_code=stock_code,
                     market_type=market_type,
                     error_message=f"不支持的市场类型: {market_type}",
-                    suggestion="请选择支持的市场类型：A股、港股、美股"
+                    suggestion="请选择支持的市场类型：A股、港股、美股、加密货币"
                 )
         except Exception as e:
             logger.error(f"❌ [数据准备-异步] 数据准备异常: {e}")
@@ -1215,6 +1243,59 @@ class StockDataPreparer:
                 market_type="美股",
                 error_message=f"数据准备失败: {str(e)}",
                 suggestion="请检查网络连接或数据源配置"
+            )
+
+    def _prepare_crypto_data(self, stock_code: str, period_days: int,
+                             analysis_date: str) -> StockDataPreparationResult:
+        """预获取比特币（BTCUSDT）行情数据（Binance）。"""
+        from tradingagents.dataflows.providers.crypto.binance import (
+            get_crypto_market_data,
+            normalize_crypto_symbol,
+        )
+
+        from tradingagents.dataflows.providers.crypto.binance import (
+            get_market_analyst_lookback_days,
+            resolve_crypto_date_range,
+        )
+
+        pair = normalize_crypto_symbol(stock_code)
+        lookback_days = get_market_analyst_lookback_days()
+        start_date_str, end_date_str = resolve_crypto_date_range(analysis_date, lookback_days)
+        logger.info(
+            f"₿ [加密货币] 开始准备 {pair} 数据 "
+            f"(MARKET_ANALYST_LOOKBACK_DAYS={lookback_days}天, {start_date_str}~{end_date_str})"
+        )
+
+        try:
+            market_data = get_crypto_market_data(pair, start_date_str, end_date_str)
+            if not market_data or "❌" in market_data:
+                return StockDataPreparationResult(
+                    is_valid=False,
+                    stock_code=pair,
+                    market_type="加密货币",
+                    error_message=f"无法获取 {pair} 的行情数据",
+                    suggestion="请检查网络连接，或稍后重试"
+                )
+
+            logger.info(f"✅ [加密货币] 数据准备完成: {pair}")
+            return StockDataPreparationResult(
+                is_valid=True,
+                stock_code=pair,
+                market_type="加密货币",
+                stock_name="比特币 (BTC)",
+                has_historical_data=True,
+                has_basic_info=True,
+                data_period_days=lookback_days,
+                cache_status=f"Binance日K({lookback_days}天回溯)"
+            )
+        except Exception as e:
+            logger.error(f"❌ [加密货币] 数据准备失败: {e}")
+            return StockDataPreparationResult(
+                is_valid=False,
+                stock_code=pair,
+                market_type="加密货币",
+                error_message=f"比特币数据获取失败: {str(e)}",
+                suggestion="请检查网络是否能访问 api.binance.com"
             )
 
 
