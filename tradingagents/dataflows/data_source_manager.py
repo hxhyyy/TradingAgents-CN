@@ -46,6 +46,8 @@ class USDataSource(Enum):
     值使用统一的数据源编码
     """
     MONGODB = DataSourceCode.MONGODB  # MongoDB数据库缓存（最高优先级）
+    SINA = "sina"  # 新浪财经（国内在线日线/报价，免 Key）
+    EASTMONEY = "eastmoney"  # 东方财富（国内在线日线/报价，免 Key）
     YFINANCE = DataSourceCode.YFINANCE  # Yahoo Finance（免费，股票价格和技术指标）
     ALPHA_VANTAGE = DataSourceCode.ALPHA_VANTAGE  # Alpha Vantage（基本面和新闻）
     FINNHUB = DataSourceCode.FINNHUB  # Finnhub（备用数据源）
@@ -2219,6 +2221,8 @@ class USDataSourceManager:
     美股数据源管理器
 
     支持的数据源：
+    - sina: 新浪财经日线/报价（国内在线，免 Key）
+    - eastmoney: 东方财富日线/报价（国内在线，免 Key）
     - yfinance: 股票价格和技术指标（免费）
     - alpha_vantage: 基本面和新闻数据（需要API Key）
     - finnhub: 备用数据源（需要API Key）
@@ -2273,6 +2277,10 @@ class USDataSourceManager:
                 # 转换为 USDataSource 枚举
                 # 🔥 数据源名称映射（数据库名称 → USDataSource 枚举）
                 source_mapping = {
+                    'sina': USDataSource.SINA,
+                    '新浪财经': USDataSource.SINA,
+                    'eastmoney': USDataSource.EASTMONEY,
+                    '东方财富': USDataSource.EASTMONEY,
                     'yfinance': USDataSource.YFINANCE,
                     'yahoo_finance': USDataSource.YFINANCE,  # 别名
                     'alpha_vantage': USDataSource.ALPHA_VANTAGE,
@@ -2296,9 +2304,10 @@ class USDataSourceManager:
         except Exception as e:
             logger.warning(f"⚠️ [美股数据源优先级] 从数据库读取失败: {e}，使用默认顺序")
 
-        # 回退到默认顺序
-        # 默认顺序：yfinance > Alpha Vantage > Finnhub
+        # 回退到默认顺序（国内优先新浪/东财在线源）
         default_order = [
+            USDataSource.SINA,
+            USDataSource.EASTMONEY,
             USDataSource.YFINANCE,
             USDataSource.ALPHA_VANTAGE,
             USDataSource.FINNHUB,
@@ -2340,6 +2349,15 @@ class USDataSourceManager:
         # 从数据库读取启用的数据源列表和配置
         enabled_sources_in_db = self._get_enabled_sources_from_db()
         datasource_configs = self._get_datasource_configs_from_db()
+
+        # 新浪财经 / 东方财富（国内在线，免 Key，始终可用）
+        try:
+            import requests  # noqa: F401
+            available.append(USDataSource.SINA)
+            available.append(USDataSource.EASTMONEY)
+            logger.info("✅ 新浪财经/东方财富美股数据源可用（在线 API）")
+        except ImportError:
+            logger.warning("⚠️ 国内在线美股源不可用: 未安装 requests")
 
         # 检查 yfinance
         if 'yfinance' in enabled_sources_in_db:
@@ -2400,6 +2418,10 @@ class USDataSourceManager:
 
             # 🔥 数据源名称映射（数据库名称 → 代码中使用的名称）
             name_mapping = {
+                'sina': 'sina',
+                '新浪财经': 'sina',
+                'eastmoney': 'eastmoney',
+                '东方财富': 'eastmoney',
                 'alpha vantage': 'alpha_vantage',
                 'yahoo finance': 'yfinance',
                 'finnhub': 'finnhub',

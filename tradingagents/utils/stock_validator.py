@@ -1184,17 +1184,12 @@ class StockDataPreparer:
                     end_date_str
                 )
 
-            if historical_data and "❌" not in historical_data and "错误" not in historical_data and "无法获取" not in historical_data:
-                # 更宽松的数据有效性检查
-                data_indicators = [
-                    "开盘价", "收盘价", "最高价", "最低价", "成交量",
-                    "Open", "Close", "High", "Low", "Volume",
-                    "日期", "Date", "时间", "Time"
-                ]
-
+            if historical_data and "❌" not in historical_data and "错误" not in historical_data and "无法获取" not in historical_data and "数据获取失败" not in historical_data and "模拟数据" not in historical_data:
+                # 美股市场分析需要完整日线序列（含 MA/成交量），不接受仅实时报价快照
                 has_valid_data = (
-                    len(historical_data) > 50 and  # 降低长度要求
-                    any(indicator in historical_data for indicator in data_indicators)
+                    len(historical_data) > 50
+                    and "数据条数" in historical_data
+                    and "MA5" in historical_data
                 )
 
                 if has_valid_data:
@@ -1222,8 +1217,14 @@ class StockDataPreparer:
                         is_valid=False,
                         stock_code=formatted_code,
                         market_type="美股",
-                        error_message=f"美股 {formatted_code} 的历史数据无效或不足",
-                        suggestion="该股票可能为新上市股票或数据源暂时不可用，请稍后重试"
+                        error_message=(
+                            f"美股 {formatted_code} 缺少可计算技术指标的历史日线数据"
+                            f"（当前可能仅有 Finnhub 实时报价，免费版无 K 线权限）"
+                        ),
+                        suggestion=(
+                            "请配置 Yahoo Finance 可访问网络、升级 Finnhub 付费 K 线权限，"
+                            "或配置 Alpha Vantage 等备用数据源后重试"
+                        )
                     )
             else:
                 logger.warning(f"⚠️ [美股数据] 无法获取历史数据: {formatted_code}")

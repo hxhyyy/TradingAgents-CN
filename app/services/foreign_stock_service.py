@@ -813,28 +813,41 @@ class ForeignStockService:
 
         # 数据源名称映射
         source_handlers = {
+            'sina': ('sina', self._get_us_kline_from_sina),
+            '新浪财经': ('sina', self._get_us_kline_from_sina),
+            'eastmoney': ('eastmoney', self._get_us_kline_from_eastmoney),
+            '东方财富': ('eastmoney', self._get_us_kline_from_eastmoney),
             'alpha_vantage': ('alpha_vantage', self._get_us_kline_from_alpha_vantage),
             'yahoo_finance': ('yfinance', self._get_us_kline_from_yfinance),
             'finnhub': ('finnhub', self._get_us_kline_from_finnhub),
         }
 
-        # 过滤有效数据源并去重
-        valid_priority = []
-        seen = set()
+        alias_map = {
+            '新浪财经': 'sina',
+            '东方财富': 'eastmoney',
+            'yahoo finance': 'yahoo_finance',
+        }
+
+        valid_priority: list[str] = []
+        seen: set[str] = set()
+        for preferred in ('sina', 'eastmoney'):
+            seen.add(preferred)
+            valid_priority.append(preferred)
         for source_name in source_priority:
-            source_key = source_name.lower()
+            source_key = alias_map.get(source_name, alias_map.get(source_name.lower(), source_name.lower()))
             if source_key in source_handlers and source_key not in seen:
                 seen.add(source_key)
-                valid_priority.append(source_name)
+                valid_priority.append(source_key)
 
-        if not valid_priority:
-            logger.warning("⚠️ 数据库中没有配置有效的美股数据源，使用默认顺序")
-            valid_priority = ['yahoo_finance', 'alpha_vantage', 'finnhub']
+        for fallback in ('yahoo_finance', 'alpha_vantage', 'finnhub'):
+            if fallback not in seen:
+                seen.add(fallback)
+                valid_priority.append(fallback)
 
         logger.info(f"📊 [US K线有效数据源] {valid_priority}")
 
         for source_name in valid_priority:
-            source_key = source_name.lower()
+            source_key = alias_map.get(source_name, source_name.lower())
             handler_name, handler_func = source_handlers[source_key]
             try:
                 # 🔥 使用 asyncio.to_thread 避免阻塞事件循环
@@ -1033,6 +1046,58 @@ class ForeignStockService:
             'dividend_yield': None,  # Finnhub profile 不直接提供股息率
             'currency': profile.get('currency', 'USD'),
         }
+
+    def _get_us_kline_from_sina(self, code: str, period: str, limit: int) -> List[Dict]:
+        """从新浪财经在线 API 获取美股日 K"""
+        from datetime import datetime, timedelta
+        from tradingagents.dataflows.providers.us.sina_us import fetch_us_daily_ohlcv_sina
+
+        if period not in ('day', 'daily', '1d', 'd'):
+            raise Exception("新浪源当前仅支持日 K")
+
+        end = datetime.now().strftime('%Y-%m-%d')
+        start = (datetime.now() - timedelta(days=max(limit, 30))).strftime('%Y-%m-%d')
+        df = fetch_us_daily_ohlcv_sina(code, start, end).tail(limit)
+
+        kline_data = []
+        for date, row in df.iterrows():
+            date_str = date.strftime('%Y-%m-%d')
+            kline_data.append({
+                'date': date_str,
+                'trade_date': date_str,
+                'open': float(row['Open']),
+                'high': float(row['High']),
+                'low': float(row['Low']),
+                'close': float(row['Close']),
+                'volume': int(row['Volume']),
+            })
+        return kline_data
+
+    def _get_us_kline_from_eastmoney(self, code: str, period: str, limit: int) -> List[Dict]:
+        """从东方财富在线 API 获取美股日 K"""
+        from datetime import datetime, timedelta
+        from tradingagents.dataflows.providers.us.sina_us import fetch_us_daily_ohlcv_eastmoney
+
+        if period not in ('day', 'daily', '1d', 'd'):
+            raise Exception("东财源当前仅支持日 K")
+
+        end = datetime.now().strftime('%Y-%m-%d')
+        start = (datetime.now() - timedelta(days=max(limit, 30))).strftime('%Y-%m-%d')
+        df = fetch_us_daily_ohlcv_eastmoney(code, start, end).tail(limit)
+
+        kline_data = []
+        for date, row in df.iterrows():
+            date_str = date.strftime('%Y-%m-%d')
+            kline_data.append({
+                'date': date_str,
+                'trade_date': date_str,
+                'open': float(row['Open']),
+                'high': float(row['High']),
+                'low': float(row['Low']),
+                'close': float(row['Close']),
+                'volume': int(row['Volume']),
+            })
+        return kline_data
 
     def _get_us_kline_from_yfinance(self, code: str, period: str, limit: int) -> List[Dict]:
         """从yfinance获取美股K线数据"""

@@ -29,6 +29,13 @@ except ImportError:
     def get_config():
         return {}
 
+
+def _is_sufficient_historical_report(formatted_data: Optional[str]) -> bool:
+    """判断美股返回内容是否包含可计算技术指标的历史 K 线，而非仅实时报价快照。"""
+    if not formatted_data or "❌" in formatted_data:
+        return False
+    return "数据条数" in formatted_data and "MA5" in formatted_data
+
 from tradingagents.config.runtime_settings import get_float, get_timezone_name
 # 导入日志模块
 from tradingagents.utils.logging_manager import get_logger
@@ -94,6 +101,8 @@ class OptimizedUSDataProvider:
 
             # 数据源名称映射
             source_name_mapping = {
+                USDataSource.SINA: "sina",
+                USDataSource.EASTMONEY: "eastmoney",
                 USDataSource.ALPHA_VANTAGE: "alpha_vantage",
                 USDataSource.YFINANCE: "yfinance",
                 USDataSource.FINNHUB: "finnhub",
@@ -115,15 +124,19 @@ class OptimizedUSDataProvider:
 
                     if cache_key:
                         cached_data = self.cache.load_stock_data(cache_key)
-                        if cached_data:
+                        if cached_data and _is_sufficient_historical_report(cached_data):
                             logger.info(f"⚡ [数据来源: 缓存-{source_name}] 从缓存加载美股数据: {symbol}")
                             return cached_data
+                        if cached_data:
+                            logger.warning(
+                                f"⚠️ [缓存跳过-{source_name}] {symbol} 缓存为报价快照或数据不足，重新拉取"
+                            )
 
         # 缓存未命中，从API获取 - 使用数据源管理器的优先级顺序
         formatted_data = None
         data_source = None
 
-        # 🔥 从数据源管理器获取优先级顺序
+        # 国内在线源（新浪/东财）始终优先，避免 DB 中 Finnhub 排序挡住真实 K 线
         if self.us_manager:
             try:
                 source_priority = self.us_manager._get_data_source_priority_order(symbol)
@@ -134,12 +147,22 @@ class OptimizedUSDataProvider:
         else:
             source_priority = None
 
-        # 如果没有配置优先级，使用默认顺序
+        from tradingagents.dataflows.data_source_manager import USDataSource
+        china_online = [USDataSource.SINA, USDataSource.EASTMONEY]
         if not source_priority:
-            # 默认顺序：yfinance > alpha_vantage > finnhub
-            from tradingagents.dataflows.data_source_manager import USDataSource
-            source_priority = [USDataSource.YFINANCE, USDataSource.ALPHA_VANTAGE, USDataSource.FINNHUB]
+            source_priority = [
+                USDataSource.YFINANCE,
+                USDataSource.ALPHA_VANTAGE,
+                USDataSource.FINNHUB,
+            ]
             logger.info(f"📊 [美股数据源优先级] 使用默认顺序: {[s.value for s in source_priority]}")
+
+        merged: list = []
+        for src in china_online + source_priority:
+            if src not in merged:
+                merged.append(src)
+        source_priority = merged
+        logger.info(f"📊 [美股数据源优先级] 实际顺序: {[s.value for s in source_priority]}")
 
         # 按优先级尝试各个数据源
         for source in source_priority:
@@ -149,7 +172,11 @@ class OptimizedUSDataProvider:
                 self._wait_for_rate_limit()
 
                 # 根据数据源类型调用不同的方法
-                if source_name == 'finnhub':
+                if source_name == 'sina':
+                    formatted_data = self._get_data_from_sina(symbol, start_date, end_date)
+                elif source_name == 'eastmoney':
+                    formatted_data = self._get_data_from_eastmoney(symbol, start_date, end_date)
+                elif source_name == 'finnhub':
                     formatted_data = self._get_data_from_finnhub(symbol, start_date, end_date)
                 elif source_name == 'alpha_vantage':
                     formatted_data = self._get_data_from_alpha_vantage(symbol, start_date, end_date)
@@ -159,10 +186,16 @@ class OptimizedUSDataProvider:
                     logger.warning(f"⚠️ 未知的数据源类型: {source_name}")
                     continue
 
-                if formatted_data and "❌" not in formatted_data:
+                if formatted_data and _is_sufficient_historical_report(formatted_data):
                     data_source = source_name
                     logger.info(f"✅ [数据来源: API调用成功-{source_name.upper()}] {source_name.upper()} 数据获取成功: {symbol}")
                     break  # 成功获取数据，跳出循环
+                elif formatted_data:
+                    logger.warning(
+                        f"⚠️ [数据来源: 数据不足-{source_name.upper()}] "
+                        f"{source_name.upper()} 仅返回报价快照或缺少历史K线，尝试下一个数据源"
+                    )
+                    formatted_data = None
                 else:
                     logger.warning(f"⚠️ [数据来源: API失败-{source_name.upper()}] {source_name.upper()} 数据获取失败，尝试下一个数据源")
                     formatted_data = None
@@ -209,22 +242,18 @@ class OptimizedUSDataProvider:
                         else:
                             logger.error(f"❌ [数据来源: API失败-Yahoo Finance] Yahoo Finance港股数据为空: {symbol}")
                 else:
-                    # 美股使用Yahoo Finance
-                    logger.info(f"🇺🇸 [数据来源: API调用-Yahoo Finance] 从Yahoo Finance API获取美股数据: {symbol}")
-                    self._wait_for_rate_limit()
-
-                    # 获取数据
-                    ticker = yf.Ticker(symbol.upper())
-                    data = ticker.history(start=start_date, end=end_date)
-
-                    if data.empty:
-                        error_msg = f"未找到股票 '{symbol}' 在 {start_date} 到 {end_date} 期间的数据"
-                        logger.error(f"❌ [数据来源: API失败-Yahoo Finance] {error_msg}")
-                    else:
-                        # 格式化数据
-                        formatted_data = self._format_stock_data(symbol, data, start_date, end_date)
-                        data_source = "yfinance"
-                        logger.info(f"✅ [数据来源: API调用成功-Yahoo Finance] Yahoo Finance美股数据获取成功: {symbol}")
+                    # 美股：优先新浪/东财在线日线（国内可访问）
+                    logger.info(f"🇺🇸 [数据来源: API调用-新浪/东财] 在线获取美股日线: {symbol}")
+                    try:
+                        formatted_data = self._get_data_from_sina(symbol, start_date, end_date)
+                        if not formatted_data:
+                            formatted_data = self._get_data_from_eastmoney(symbol, start_date, end_date)
+                        if formatted_data:
+                            data_source = "sina"
+                            logger.info(f"✅ [数据来源: API调用成功-国内在线源] 美股日线获取成功: {symbol}")
+                    except Exception as e:
+                        logger.error(f"❌ [数据来源: API失败-国内在线源] {e}")
+                        formatted_data = None
 
             except Exception as e:
                 logger.error(f"❌ [数据来源: API异常] 数据获取失败: {e}")
@@ -250,7 +279,8 @@ class OptimizedUSDataProvider:
         return formatted_data
 
     def _format_stock_data(self, symbol: str, data: pd.DataFrame,
-                          start_date: str, end_date: str) -> str:
+                          start_date: str, end_date: str,
+                          data_source_label: str = "Yahoo Finance API") -> str:
         """格式化股票数据为字符串"""
 
         # 移除时区信息
@@ -314,7 +344,7 @@ class OptimizedUSDataProvider:
 ## 📋 最近5日数据
 {data[['Open', 'High', 'Low', 'Close', 'Volume']].tail().to_string()}
 
-数据来源: Yahoo Finance API
+数据来源: {data_source_label}
 更新时间: {datetime.now(ZoneInfo(get_timezone_name())).strftime('%Y-%m-%d %H:%M:%S')}
 """
 
@@ -345,58 +375,71 @@ class OptimizedUSDataProvider:
 
         return None
 
+    def _get_data_from_sina(self, symbol: str, start_date: str, end_date: str) -> Optional[str]:
+        """从新浪财经在线 API 获取美股日线"""
+        try:
+            from .sina_us import fetch_us_daily_ohlcv_sina
+
+            data = fetch_us_daily_ohlcv_sina(symbol, start_date, end_date)
+            return self._format_stock_data(
+                symbol, data, start_date, end_date, data_source_label="新浪财经 API"
+            )
+        except Exception as e:
+            logger.error(f"❌ 新浪美股日线获取失败: {e}")
+            return None
+
+    def _get_data_from_eastmoney(self, symbol: str, start_date: str, end_date: str) -> Optional[str]:
+        """从东方财富在线 API 获取美股日线"""
+        try:
+            from .sina_us import fetch_us_daily_ohlcv_eastmoney
+
+            data = fetch_us_daily_ohlcv_eastmoney(symbol, start_date, end_date)
+            return self._format_stock_data(
+                symbol, data, start_date, end_date, data_source_label="东方财富 API"
+            )
+        except Exception as e:
+            logger.error(f"❌ 东财美股日线获取失败: {e}")
+            return None
+
     def _get_data_from_finnhub(self, symbol: str, start_date: str, end_date: str) -> str:
-        """从FINNHUB API获取股票数据"""
+        """从 FINNHUB API 获取美股日线历史（需付费 K 线权限）；免费版仅 quote 时返回 None 以触发备用源。"""
         try:
             import finnhub
             import os
-            from datetime import datetime, timedelta
 
-
-            # 获取API密钥
             api_key = os.getenv('FINNHUB_API_KEY')
             if not api_key:
                 return None
 
             client = finnhub.Client(api_key=api_key)
+            symbol = symbol.upper()
 
-            # 获取实时报价
-            quote = client.quote(symbol.upper())
-            if not quote or 'c' not in quote:
+            start_ts = int(datetime.strptime(start_date, '%Y-%m-%d').timestamp())
+            end_ts = int(datetime.strptime(end_date, '%Y-%m-%d').timestamp())
+            if end_ts <= start_ts:
+                end_ts = start_ts + 86400
+
+            candles = client.stock_candles(symbol, 'D', start_ts, end_ts)
+            if not candles or candles.get('s') != 'ok' or not candles.get('c'):
+                logger.warning(
+                    f"⚠️ FINNHUB 无日线历史权限或数据为空: {symbol} "
+                    f"(status={candles.get('s') if candles else 'none'})，将尝试其他数据源"
+                )
                 return None
 
-            # 获取公司信息
-            profile = client.company_profile2(symbol=symbol.upper())
-            company_name = profile.get('name', symbol.upper()) if profile else symbol.upper()
+            data = pd.DataFrame({
+                'Open': candles['o'],
+                'High': candles['h'],
+                'Low': candles['l'],
+                'Close': candles['c'],
+                'Volume': candles['v'],
+            }, index=pd.to_datetime(candles['t'], unit='s'))
+            data.index.name = 'Date'
 
-            # 格式化数据
-            current_price = quote.get('c', 0)
-            change = quote.get('d', 0)
-            change_percent = quote.get('dp', 0)
-
-            formatted_data = f"""# {symbol.upper()} 美股数据分析
-
-## 📊 实时行情
-- 股票名称: {company_name}
-- 当前价格: ${current_price:.2f}
-- 涨跌额: ${change:+.2f}
-- 涨跌幅: {change_percent:+.2f}%
-- 开盘价: ${quote.get('o', 0):.2f}
-- 最高价: ${quote.get('h', 0):.2f}
-- 最低价: ${quote.get('l', 0):.2f}
-- 前收盘: ${quote.get('pc', 0):.2f}
-- 更新时间: {datetime.now(ZoneInfo(get_timezone_name())).strftime('%Y-%m-%d %H:%M:%S')}
-
-## 📈 数据概览
-- 数据期间: {start_date} 至 {end_date}
-- 数据来源: FINNHUB API (实时数据)
-- 当前价位相对位置: {((current_price - quote.get('l', current_price)) / max(quote.get('h', current_price) - quote.get('l', current_price), 0.01) * 100):.1f}%
-- 日内振幅: {((quote.get('h', 0) - quote.get('l', 0)) / max(quote.get('pc', 1), 0.01) * 100):.2f}%
-
-生成时间: {datetime.now(ZoneInfo(get_timezone_name())).strftime('%Y-%m-%d %H:%M:%S')}
-"""
-
-            return formatted_data
+            return self._format_stock_data(symbol, data, start_date, end_date).replace(
+                "数据来源: Yahoo Finance API",
+                "数据来源: FINNHUB API",
+            )
 
         except Exception as e:
             logger.error(f"❌ FINNHUB数据获取失败: {e}")
