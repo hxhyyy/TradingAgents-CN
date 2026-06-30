@@ -209,7 +209,10 @@ class DataSourceManager:
         for adapter in available_adapters:
             try:
                 logger.info(f"Trying to fetch realtime quotes from {adapter.name}")
-                data = adapter.get_realtime_quotes()
+                if adapter.name == "akshare":
+                    data = adapter.get_realtime_quotes(source="sina")
+                else:
+                    data = adapter.get_realtime_quotes()
                 if data:
                     return data, adapter.name
             except Exception as e:

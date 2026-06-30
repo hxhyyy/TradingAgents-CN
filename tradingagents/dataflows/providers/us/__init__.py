@@ -19,6 +19,14 @@ except ImportError:
     YFinanceUtils = None
     YFINANCE_AVAILABLE = False
 
+# 导入新浪财经工具
+try:
+    from .sina_akshare import get_fundamentals as get_sina_fundamentals, is_available as SINA_AVAILABLE
+    SINA_AKSHARE_AVAILABLE = True
+except ImportError:
+    get_sina_fundamentals = None
+    SINA_AKSHARE_AVAILABLE = False
+
 # 导入优化的美股数据提供器
 try:
     from .optimized import OptimizedUSDataProvider
@@ -38,6 +46,10 @@ __all__ = [
     # Yahoo Finance
     'YFinanceUtils',
     'YFINANCE_AVAILABLE',
+
+    # 新浪财经
+    'get_sina_fundamentals',
+    'SINA_AKSHARE_AVAILABLE',
 
     # 优化的提供器
     'OptimizedUSDataProvider',

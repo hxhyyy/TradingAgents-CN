@@ -192,12 +192,24 @@ class AKShareAdapter(DataSourceAdapter):
             return None
 
 
-    def get_realtime_quotes(self, source: str = "eastmoney"):
+    @staticmethod
+    def _normalize_code(code_raw) -> str:
+        if not code_raw:
+            return ""
+        code_str = str(code_raw).strip()
+        if len(code_str) > 6:
+            code_str = "".join(filter(str.isdigit, code_str))
+        if code_str.isdigit():
+            return code_str.lstrip("0").zfill(6) or "000000"
+        digits = "".join(filter(str.isdigit, code_str))
+        return digits.zfill(6) if digits else ""
+
+    def get_realtime_quotes(self, source: str = "sina"):
         """
         获取全市场实时快照，返回以6位代码为键的字典
 
         Args:
-            source: 数据源选择，"eastmoney"（东方财富）或 "sina"（新浪财经）
+            source: 数据源选择，"sina"（新浪财经，默认）或 "eastmoney"（东方财富）
 
         Returns:
             Dict[str, Dict]: {code: {close, pct_chg, amount, ...}}
@@ -205,15 +217,27 @@ class AKShareAdapter(DataSourceAdapter):
         if not self.is_available():
             return None
 
+        sources = [source]
+        if source == "sina":
+            sources.append("eastmoney")
+        elif source == "eastmoney":
+            sources.insert(0, "sina")
+
+        for current_source in sources:
+            result = self._fetch_realtime_quotes_from_source(current_source)
+            if result:
+                return result
+        return None
+
+    def _fetch_realtime_quotes_from_source(self, source: str):
         try:
             import akshare as ak  # type: ignore
 
-            # 根据 source 参数选择接口
             if source == "sina":
-                df = ak.stock_zh_a_spot()  # 新浪财经接口
+                df = ak.stock_zh_a_spot()
                 logger.info("使用 AKShare 新浪财经接口获取实时行情")
-            else:  # 默认使用东方财富
-                df = ak.stock_zh_a_spot_em()  # 东方财富接口
+            else:
+                df = ak.stock_zh_a_spot_em()
                 logger.info("使用 AKShare 东方财富接口获取实时行情")
 
             if df is None or getattr(df, "empty", True):
@@ -237,37 +261,21 @@ class AKShareAdapter(DataSourceAdapter):
 
             result: Dict[str, Dict[str, Optional[float]]] = {}
             for _, row in df.iterrows():  # type: ignore
-                code_raw = row.get(code_col)
-                if not code_raw:
+                code = self._normalize_code(row.get(code_col))
+                if not code:
                     continue
-                # 标准化股票代码：处理交易所前缀（如 sz000001, sh600036）
-                code_str = str(code_raw).strip()
-
-                # 如果代码长度超过6位，去掉前面的交易所前缀（如 sz, sh）
-                if len(code_str) > 6:
-                    # 去掉前面的非数字字符（通常是2个字符的交易所代码）
-                    code_str = ''.join(filter(str.isdigit, code_str))
-
-                # 如果是纯数字，移除前导0后补齐到6位
-                if code_str.isdigit():
-                    code_clean = code_str.lstrip('0') or '0'  # 移除前导0，如果全是0则保留一个0
-                    code = code_clean.zfill(6)  # 补齐到6位
-                else:
-                    # 如果不是纯数字，尝试提取数字部分
-                    code_digits = ''.join(filter(str.isdigit, code_str))
-                    if code_digits:
-                        code = code_digits.zfill(6)
-                    else:
-                        # 无法提取有效代码，跳过
-                        continue
 
                 close = self._safe_float(row.get(price_col))
                 pct = self._safe_float(row.get(pct_col)) if pct_col else None
                 amt = self._safe_float(row.get(amount_col)) if amount_col else None
                 op = self._safe_float(row.get(open_col)) if open_col else None
+                if op is None and source == "sina":
+                    op = self._safe_float(row.get("买入"))
                 hi = self._safe_float(row.get(high_col)) if high_col else None
                 lo = self._safe_float(row.get(low_col)) if low_col else None
                 pre = self._safe_float(row.get(pre_close_col)) if pre_close_col else None
+                if pre is None and source == "sina":
+                    pre = self._safe_float(row.get("昨收"))
                 vol = self._safe_float(row.get(volume_col)) if volume_col else None
 
                 # 🔥 日志：记录AKShare返回的成交量

@@ -1150,6 +1150,7 @@ def get_fundamentals_openai(ticker, curr_date):
     获取美股基本面数据，使用数据源管理器自动选择和降级
 
     支持的数据源（按数据库配置的优先级）：
+    - 新浪财经: 美股日线行情与技术分析（AKShare，默认优先）
     - Alpha Vantage: 基本面和新闻数据（准确度高）
     - yfinance: 股票价格和基本信息（免费）
     - Finnhub: 备用数据源
@@ -1173,6 +1174,7 @@ def get_fundamentals_openai(ticker, curr_date):
 
         # 检查缓存 - 按数据源优先级检查
         data_source_cache_names = {
+            USDataSource.SINA: "sina",
             USDataSource.ALPHA_VANTAGE: "alpha_vantage",
             USDataSource.YFINANCE: "yfinance",
             USDataSource.FINNHUB: "finnhub",
@@ -1198,7 +1200,12 @@ def get_fundamentals_openai(ticker, curr_date):
         # 按优先级尝试每个数据源
         for source in priority_order:
             try:
-                if source == USDataSource.ALPHA_VANTAGE:
+                if source == USDataSource.SINA:
+                    result = _get_fundamentals_sina_akshare(ticker, curr_date, cache)
+                    if result:
+                        return result
+
+                elif source == USDataSource.ALPHA_VANTAGE:
                     result = _get_fundamentals_alpha_vantage(ticker, curr_date, cache)
                     if result:
                         return result
@@ -1237,6 +1244,40 @@ def get_fundamentals_openai(ticker, curr_date):
     except Exception as e:
         logger.error(f"❌ [美股基本面] 获取失败: {str(e)}")
         return f"❌ 获取 {ticker} 基本面数据失败: {str(e)}"
+
+
+def _get_fundamentals_sina_akshare(ticker, curr_date, cache):
+    """
+    从新浪财经（AKShare）获取美股基本面/行情数据
+
+    Args:
+        ticker: 股票代码
+        curr_date: 当前日期
+        cache: 缓存对象
+
+    Returns:
+        str: 基本面数据报告，失败返回 None
+    """
+    try:
+        logger.info(f"📊 [新浪财经] 获取 {ticker} 的基本面数据...")
+        from .providers.us.sina_akshare import get_fundamentals, is_available
+
+        if not is_available():
+            logger.warning("⚠️ [新浪财经] akshare 未安装")
+            return None
+
+        result = get_fundamentals(ticker, curr_date)
+
+        if result and len(result) > 100:
+            cache.save_fundamentals_data(ticker, result, data_source="sina")
+            logger.info(f"✅ [新浪财经] 基本面数据获取成功: {ticker}")
+            return result
+
+        logger.warning("⚠️ [新浪财经] 数据质量不佳")
+        return None
+    except Exception as e:
+        logger.warning(f"⚠️ [新浪财经] 获取失败: {e}")
+        return None
 
 
 def _get_fundamentals_alpha_vantage(ticker, curr_date, cache):

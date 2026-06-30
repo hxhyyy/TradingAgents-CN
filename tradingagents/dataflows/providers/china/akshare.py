@@ -489,6 +489,19 @@ class AKShareProvider(BaseStockDataProvider):
         else:
             return "未知市场"
     
+    @staticmethod
+    def _normalize_a_share_code(code) -> str:
+        """将 sz000001 / sh600000 / 000001 统一为 6 位数字代码"""
+        if not code:
+            return ""
+        code_str = str(code).strip()
+        if len(code_str) > 6:
+            code_str = "".join(filter(str.isdigit, code_str))
+        if code_str.isdigit():
+            return code_str.lstrip("0").zfill(6) or "000000"
+        digits = "".join(filter(str.isdigit, code_str))
+        return digits.zfill(6) if digits else ""
+
     def _get_full_symbol(self, code: str) -> str:
         """
         获取完整股票代码
@@ -618,13 +631,13 @@ class AKShareProvider(BaseStockDataProvider):
 
                 for _, row in spot_df.iterrows():
                     raw_code = str(row.get("代码", ""))
+                    normalized = self._normalize_a_share_code(raw_code)
 
-                    # 尝试匹配代码（支持带前缀和不带前缀）
                     matched_code = None
                     if raw_code in code_mapping:
                         matched_code = code_mapping[raw_code]
-                    elif raw_code in codes_set:
-                        matched_code = raw_code
+                    elif normalized in codes_set:
+                        matched_code = normalized
 
                     if matched_code:
                         quotes_data = {
@@ -771,13 +784,15 @@ class AKShareProvider(BaseStockDataProvider):
                 spot_df = await asyncio.to_thread(fetch_spot_data_sina)
 
                 if spot_df is not None and not spot_df.empty:
-                    # 查找对应股票
-                    stock_data = spot_df[spot_df['代码'] == code]
+                    norm_code = self._normalize_a_share_code(code)
+                    stock_data = spot_df[
+                        spot_df["代码"].astype(str).map(self._normalize_a_share_code) == norm_code
+                    ]
 
                     if not stock_data.empty:
                         row = stock_data.iloc[0]
 
-                        # 解析行情数据
+                        # 解析行情数据（新浪接口字段较少，缺失项留空）
                         return {
                             "name": str(row.get("名称", f"股票{code}")),
                             "price": self._safe_float(row.get("最新价", 0)),
@@ -785,7 +800,7 @@ class AKShareProvider(BaseStockDataProvider):
                             "change_percent": self._safe_float(row.get("涨跌幅", 0)),
                             "volume": self._safe_int(row.get("成交量", 0)),
                             "amount": self._safe_float(row.get("成交额", 0)),
-                            "open": self._safe_float(row.get("今开", 0)),
+                            "open": self._safe_float(row.get("今开", row.get("买入", 0))),
                             "high": self._safe_float(row.get("最高", 0)),
                             "low": self._safe_float(row.get("最低", 0)),
                             "pre_close": self._safe_float(row.get("昨收", 0)),
@@ -809,7 +824,10 @@ class AKShareProvider(BaseStockDataProvider):
                 spot_df = await asyncio.to_thread(fetch_spot_data_em)
 
                 if spot_df is not None and not spot_df.empty:
-                    stock_data = spot_df[spot_df['代码'] == code]
+                    norm_code = self._normalize_a_share_code(code)
+                    stock_data = spot_df[
+                        spot_df["代码"].astype(str).map(self._normalize_a_share_code) == norm_code
+                    ]
 
                     if not stock_data.empty:
                         row = stock_data.iloc[0]

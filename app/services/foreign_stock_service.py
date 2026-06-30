@@ -267,7 +267,7 @@ class ForeignStockService:
         default_priority = {
             "CN": ["tushare", "akshare", "baostock"],
             "HK": ["yfinance", "akshare"],
-            "US": ["yfinance", "alpha_vantage", "finnhub"]
+            "US": ["sina", "yfinance", "alpha_vantage", "finnhub"]
         }
         priority_list = default_priority.get(market, [])
         logger.info(f"📊 [{market}数据源优先级] 使用默认: {priority_list}")
@@ -352,9 +352,10 @@ class ForeignStockService:
             quote_data = None
             data_source = None
 
-            # 数据源名称映射（数据库名称 → 处理函数）
-            # 🔥 只有这些是有效的数据源名称：alpha_vantage, yahoo_finance, finnhub
+            # 🔥 有效数据源：sina(新浪) > alpha_vantage > yahoo_finance > finnhub
             source_handlers = {
+                'sina': ('sina', self._get_us_quote_from_sina),
+                'akshare': ('sina', self._get_us_quote_from_sina),
                 'alpha_vantage': ('alpha_vantage', self._get_us_quote_from_alpha_vantage),
                 'yahoo_finance': ('yfinance', self._get_us_quote_from_yfinance),
                 'finnhub': ('finnhub', self._get_us_quote_from_finnhub),
@@ -372,7 +373,7 @@ class ForeignStockService:
 
             if not valid_priority:
                 logger.warning("⚠️ 数据库中没有配置有效的美股数据源，使用默认顺序")
-                valid_priority = ['yahoo_finance', 'alpha_vantage', 'finnhub']
+                valid_priority = ['sina', 'yahoo_finance', 'alpha_vantage', 'finnhub']
 
             logger.info(f"📊 [US有效数据源] {valid_priority} (股票: {code})")
 
@@ -525,6 +526,33 @@ class ForeignStockService:
         except Exception as e:
             logger.error(f"❌ Finnhub获取美股行情失败: {e}")
             raise
+
+    def _get_us_quote_from_sina(self, code: str) -> Dict:
+        """从新浪财经（AKShare）获取美股行情"""
+        from tradingagents.dataflows.providers.us.sina_akshare import get_us_quote
+
+        quote = get_us_quote(code)
+        if not quote or not quote.get('price'):
+            raise Exception("无数据")
+        return quote
+
+    def _get_us_info_from_sina(self, code: str) -> Dict:
+        """从新浪财经（AKShare）获取美股基础信息"""
+        from tradingagents.dataflows.providers.us.sina_akshare import get_us_info
+
+        info = get_us_info(code)
+        if not info:
+            raise Exception("无数据")
+        return info
+
+    def _get_us_kline_from_sina(self, code: str, period: str, limit: int) -> List[Dict]:
+        """从新浪财经（AKShare）获取美股K线"""
+        from tradingagents.dataflows.providers.us.sina_akshare import get_us_kline
+
+        kline = get_us_kline(code, period=period, limit=limit)
+        if not kline:
+            raise Exception("无数据")
+        return kline
     
     async def _get_hk_info(self, code: str, force_refresh: bool = False) -> Dict:
         """
@@ -632,6 +660,8 @@ class ForeignStockService:
 
         # 数据源名称映射
         source_handlers = {
+            'sina': ('sina', self._get_us_info_from_sina),
+            'akshare': ('sina', self._get_us_info_from_sina),
             'alpha_vantage': ('alpha_vantage', self._get_us_info_from_alpha_vantage),
             'yahoo_finance': ('yfinance', self._get_us_info_from_yfinance),
             'finnhub': ('finnhub', self._get_us_info_from_finnhub),
@@ -648,7 +678,7 @@ class ForeignStockService:
 
         if not valid_priority:
             logger.warning("⚠️ 数据库中没有配置有效的美股数据源，使用默认顺序")
-            valid_priority = ['yahoo_finance', 'alpha_vantage', 'finnhub']
+            valid_priority = ['sina', 'yahoo_finance', 'alpha_vantage', 'finnhub']
 
         logger.info(f"📊 [US基础信息有效数据源] {valid_priority}")
 
@@ -813,6 +843,8 @@ class ForeignStockService:
 
         # 数据源名称映射
         source_handlers = {
+            'sina': ('sina', self._get_us_kline_from_sina),
+            'akshare': ('sina', self._get_us_kline_from_sina),
             'alpha_vantage': ('alpha_vantage', self._get_us_kline_from_alpha_vantage),
             'yahoo_finance': ('yfinance', self._get_us_kline_from_yfinance),
             'finnhub': ('finnhub', self._get_us_kline_from_finnhub),
@@ -829,7 +861,7 @@ class ForeignStockService:
 
         if not valid_priority:
             logger.warning("⚠️ 数据库中没有配置有效的美股数据源，使用默认顺序")
-            valid_priority = ['yahoo_finance', 'alpha_vantage', 'finnhub']
+            valid_priority = ['sina', 'yahoo_finance', 'alpha_vantage', 'finnhub']
 
         logger.info(f"📊 [US K线有效数据源] {valid_priority}")
 

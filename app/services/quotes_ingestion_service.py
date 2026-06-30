@@ -41,7 +41,8 @@ class QuotesIngestionService:
         self._tushare_call_times = deque()  # 记录调用时间的队列（用于限流）
 
         # 接口轮换相关属性
-        self._rotation_sources = ["tushare", "akshare_eastmoney", "akshare_sina"]
+        # 接口轮换：优先新浪财经（更稳定），东方财富备用，Tushare 最后
+        self._rotation_sources = ["akshare_sina", "akshare_eastmoney", "tushare"]
         self._rotation_index = 0  # 当前轮换索引
 
     @staticmethod
@@ -576,7 +577,7 @@ class QuotesIngestionService:
                     logger.warning("AKShare 不可用")
                     return None, None
 
-                api_name = akshare_api or "eastmoney"
+                api_name = akshare_api or "sina"
                 logger.info(f"📊 使用 AKShare {api_name} 接口获取实时行情")
                 quotes_map = adapter.get_realtime_quotes(source=api_name)
 
@@ -627,11 +628,18 @@ class QuotesIngestionService:
                         f"当前采集间隔: {settings.QUOTES_INGEST_INTERVAL_SECONDS} 秒"
                     )
 
-            # 获取下一个数据源
-            source_type, akshare_api = self._get_next_source()
-
-            # 尝试获取行情
-            quotes_map, source_name = self._fetch_quotes_from_source(source_type, akshare_api)
+            # 按优先级依次尝试：新浪 → 东财 → Tushare，任意一个成功即入库
+            fetch_order = [
+                ("akshare", "sina"),
+                ("akshare", "eastmoney"),
+                ("tushare", None),
+            ]
+            quotes_map = None
+            source_name = None
+            for source_type, akshare_api in fetch_order:
+                quotes_map, source_name = self._fetch_quotes_from_source(source_type, akshare_api)
+                if quotes_map:
+                    break
 
             if not quotes_map:
                 logger.warning(f"⚠️ {source_name or source_type} 未获取到行情数据，跳过本次入库")

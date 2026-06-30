@@ -46,6 +46,7 @@ class USDataSource(Enum):
     值使用统一的数据源编码
     """
     MONGODB = DataSourceCode.MONGODB  # MongoDB数据库缓存（最高优先级）
+    SINA = "sina"  # 新浪财经（AKShare，美股日线/行情）
     YFINANCE = DataSourceCode.YFINANCE  # Yahoo Finance（免费，股票价格和技术指标）
     ALPHA_VANTAGE = DataSourceCode.ALPHA_VANTAGE  # Alpha Vantage（基本面和新闻）
     FINNHUB = DataSourceCode.FINNHUB  # Finnhub（备用数据源）
@@ -2273,6 +2274,8 @@ class USDataSourceManager:
                 # 转换为 USDataSource 枚举
                 # 🔥 数据源名称映射（数据库名称 → USDataSource 枚举）
                 source_mapping = {
+                    'sina': USDataSource.SINA,
+                    'akshare': USDataSource.SINA,  # 美股新浪数据通过 AKShare
                     'yfinance': USDataSource.YFINANCE,
                     'yahoo_finance': USDataSource.YFINANCE,  # 别名
                     'alpha_vantage': USDataSource.ALPHA_VANTAGE,
@@ -2289,22 +2292,38 @@ class USDataSourceManager:
                             result.append(source)
 
                 if result:
-                    logger.info(f"✅ [美股数据源优先级] 从数据库读取: {[s.value for s in result]}")
-                    return result
+                    # Deduplicate while preserving order (sina + akshare map to same source)
+                    deduped: List[USDataSource] = []
+                    seen: set = set()
+                    for source in result:
+                        if source not in seen:
+                            seen.add(source)
+                            deduped.append(source)
+                    logger.info(f"✅ [美股数据源优先级] 从数据库读取: {[s.value for s in deduped]}")
+                    return deduped
 
             logger.warning("⚠️ [美股数据源优先级] 数据库中没有配置，使用默认顺序")
         except Exception as e:
             logger.warning(f"⚠️ [美股数据源优先级] 从数据库读取失败: {e}，使用默认顺序")
 
         # 回退到默认顺序
-        # 默认顺序：yfinance > Alpha Vantage > Finnhub
+        # 默认顺序：新浪财经 > yfinance > Alpha Vantage > Finnhub
         default_order = [
+            USDataSource.SINA,
             USDataSource.YFINANCE,
             USDataSource.ALPHA_VANTAGE,
             USDataSource.FINNHUB,
         ]
         # 只返回可用的数据源
-        return [s for s in default_order if s in self.available_sources]
+        result = [s for s in default_order if s in self.available_sources]
+        if not result:
+            try:
+                from tradingagents.dataflows.providers.us.sina_akshare import is_available
+                if is_available():
+                    result = [USDataSource.SINA]
+            except Exception:
+                pass
+        return result
 
     def _get_default_source(self) -> USDataSource:
         """获取默认数据源"""
@@ -2312,17 +2331,19 @@ class USDataSourceManager:
         if self.use_mongodb_cache:
             return USDataSource.MONGODB
 
-        # 从环境变量获取，默认使用 yfinance
-        env_source = os.getenv('DEFAULT_US_DATA_SOURCE', DataSourceCode.YFINANCE).lower()
+        # 从环境变量获取，默认使用新浪财经
+        env_source = os.getenv('DEFAULT_US_DATA_SOURCE', 'sina').lower()
 
         # 映射到枚举
         source_mapping = {
+            'sina': USDataSource.SINA,
+            DataSourceCode.AKSHARE: USDataSource.SINA,
             DataSourceCode.YFINANCE: USDataSource.YFINANCE,
             DataSourceCode.ALPHA_VANTAGE: USDataSource.ALPHA_VANTAGE,
             DataSourceCode.FINNHUB: USDataSource.FINNHUB,
         }
 
-        return source_mapping.get(env_source, USDataSource.YFINANCE)
+        return source_mapping.get(env_source, USDataSource.SINA)
 
     def _check_available_sources(self) -> List[USDataSource]:
         """
@@ -2336,6 +2357,17 @@ class USDataSourceManager:
         if self.use_mongodb_cache:
             available.append(USDataSource.MONGODB)
             logger.info("✅ MongoDB缓存数据源可用")
+
+        # 新浪财经（AKShare）- 无需 API Key
+        try:
+            from tradingagents.dataflows.providers.us.sina_akshare import is_available
+            if is_available():
+                available.append(USDataSource.SINA)
+                logger.info("✅ 新浪财经(AKShare)美股数据源可用")
+            else:
+                logger.warning("⚠️ 新浪财经数据源不可用: 未安装 akshare 库")
+        except Exception as e:
+            logger.warning(f"⚠️ 新浪财经数据源检查失败: {e}")
 
         # 从数据库读取启用的数据源列表和配置
         enabled_sources_in_db = self._get_enabled_sources_from_db()
@@ -2400,6 +2432,8 @@ class USDataSourceManager:
 
             # 🔥 数据源名称映射（数据库名称 → 代码中使用的名称）
             name_mapping = {
+                'sina': 'sina',
+                'akshare': 'sina',
                 'alpha vantage': 'alpha_vantage',
                 'yahoo finance': 'yfinance',
                 'finnhub': 'finnhub',
