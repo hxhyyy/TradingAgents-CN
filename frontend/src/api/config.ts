@@ -506,8 +506,8 @@ export const configApi = {
   // 获取默认模型配置
   getDefaultModels(): Promise<{ quick_analysis_model: string; deep_analysis_model: string }> {
     return unwrapResponse(ApiClient.get<Record<string, any>>('/api/config/settings')).then(settings => ({
-      quick_analysis_model: settings.quick_analysis_model || 'qwen-turbo',
-      deep_analysis_model: settings.deep_analysis_model || 'qwen-max'
+      quick_analysis_model: settings.quick_analysis_model || 'nvidia/nemotron-3-super-120b-a12b',
+      deep_analysis_model: settings.deep_analysis_model || 'nvidia/nemotron-3-super-120b-a12b'
     }))
   },
 

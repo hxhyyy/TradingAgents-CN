@@ -1273,15 +1273,37 @@ class Toolkit:
                     result_data.append(f"## Google新闻\n获取失败: {google_e}")
 
             else:
-                # 美股：使用Finnhub新闻
+                # 美股：Yahoo Finance 优先，与上游 TradingAgents 一致
                 logger.info(f"🇺🇸 [统一新闻工具] 处理美股新闻...")
 
                 try:
-                    from tradingagents.dataflows.interface import get_finnhub_news
-                    news_data = get_finnhub_news(ticker, start_date_str, curr_date)
-                    result_data.append(f"## 美股新闻\n{news_data}")
+                    from tradingagents.dataflows.providers.us.yfinance_news import get_stock_news as get_yf_news
+                    news_data = get_yf_news(ticker, start_date_str, curr_date, limit=15)
+                    if news_data:
+                        result_data.append(f"## Yahoo Finance 新闻\n{news_data}")
+                        logger.info(f"🇺🇸 [统一新闻工具] Yahoo Finance 新闻获取成功")
+                    else:
+                        result_data.append("## Yahoo Finance 新闻\n未获取到新闻")
                 except Exception as e:
-                    result_data.append(f"## 美股新闻\n获取失败: {e}")
+                    result_data.append(f"## Yahoo Finance 新闻\n获取失败: {e}")
+
+                try:
+                    from tradingagents.dataflows.interface import get_google_news
+                    query = f"{ticker} stock news earnings"
+                    news_data = get_google_news(query, curr_date)
+                    if news_data:
+                        result_data.append(f"## Google 新闻\n{news_data}")
+                except Exception as google_e:
+                    logger.error(f"❌ [统一新闻工具] Google新闻获取失败: {google_e}")
+
+                if len(result_data) <= 1 or all("未获取" in s or "获取失败" in s for s in result_data):
+                    try:
+                        from tradingagents.dataflows.interface import get_finnhub_news
+                        look_back = (end_date - start_date).days
+                        news_data = get_finnhub_news(ticker, curr_date, look_back)
+                        result_data.append(f"## Finnhub 缓存新闻\n{news_data}")
+                    except Exception as e:
+                        result_data.append(f"## Finnhub 缓存新闻\n获取失败: {e}")
 
             # 组合所有数据
             combined_result = f"""# {ticker} 新闻分析
@@ -1367,16 +1389,40 @@ class Toolkit:
                     result_data.append(f"## 中文市场情绪\n获取失败: {e}")
 
             else:
-                # 美股：使用Reddit情绪分析
+                # 美股：Alpha Vantage 新闻情绪 + Reddit 本地缓存
                 logger.info(f"🇺🇸 [统一情绪工具] 处理美股情绪...")
+                from datetime import datetime, timedelta
+
+                start_date = (
+                    datetime.strptime(curr_date, "%Y-%m-%d") - timedelta(days=7)
+                ).strftime("%Y-%m-%d")
 
                 try:
-                    from tradingagents.dataflows.interface import get_reddit_sentiment
-
-                    sentiment_data = get_reddit_sentiment(ticker, curr_date)
-                    result_data.append(f"## 美股Reddit情绪\n{sentiment_data}")
+                    from tradingagents.dataflows.providers.us.alpha_vantage_news import (
+                        get_news as get_av_news,
+                    )
+                    av_data = get_av_news(ticker, start_date, curr_date)
+                    if av_data and "No news found" not in av_data:
+                        result_data.append(f"## Alpha Vantage 新闻情绪\n{av_data}")
+                        logger.info(f"🇺🇸 [统一情绪工具] Alpha Vantage 情绪数据获取成功")
                 except Exception as e:
-                    result_data.append(f"## 美股Reddit情绪\n获取失败: {e}")
+                    logger.warning(f"🇺🇸 [统一情绪工具] Alpha Vantage 失败: {e}")
+
+                try:
+                    from tradingagents.dataflows.interface import get_reddit_company_news
+                    reddit_data = get_reddit_company_news(ticker, curr_date, 7, 5)
+                    if reddit_data and len(reddit_data.strip()) > 50:
+                        result_data.append(f"## Reddit 讨论\n{reddit_data}")
+                except Exception as e:
+                    logger.warning(f"🇺🇸 [统一情绪工具] Reddit 缓存不可用: {e}")
+
+                if not result_data:
+                    result_data.append(
+                        "## 情绪数据说明\n"
+                        "未能获取足够的实时社交媒体情绪数据。\n"
+                        "**禁止编造**雪球、Reddit、股吧等平台的帖子数量、看多比例或股价预测。\n"
+                        "请仅说明数据不足，不要虚构替代数据。"
+                    )
 
             # 组合所有数据
             combined_result = f"""# {ticker} 情绪分析

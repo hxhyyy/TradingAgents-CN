@@ -411,49 +411,65 @@ class UnifiedNewsAnalyzer:
         return "❌ 无法获取港股新闻数据，所有新闻源均不可用"
     
     def _get_us_share_news(self, stock_code: str, max_news: int, model_info: str = "") -> str:
-        """获取美股新闻"""
+        """获取美股新闻：Yahoo + Alpha Vantage 合并（免费双源），失败再降级。"""
+        from datetime import timedelta
+
         logger.info(f"[统一新闻工具] 获取美股 {stock_code} 新闻")
-        
-        # 获取当前日期
+        max_news = int(max_news) if max_news else 10
+        fetch_limit = min(max(max_news, 10), 20)
+
         curr_date = datetime.now().strftime("%Y-%m-%d")
-        
-        # 优先级1: OpenAI全球新闻
+        start_date = (datetime.strptime(curr_date, "%Y-%m-%d") - timedelta(days=7)).strftime("%Y-%m-%d")
+
+        sections = []
+
+        # 源1: Yahoo Finance（免费，覆盖面广）
         try:
-            if hasattr(self.toolkit, 'get_global_news_openai'):
-                logger.info(f"[统一新闻工具] 尝试OpenAI美股新闻...")
-                # 使用LangChain工具的正确调用方式：.invoke()方法和字典参数
-                result = self.toolkit.get_global_news_openai.invoke({"curr_date": curr_date})
-                if result and len(result.strip()) > 50:
-                    logger.info(f"[统一新闻工具] ✅ OpenAI美股新闻获取成功: {len(result)} 字符")
-                    return self._format_news_result(result, "OpenAI美股新闻", model_info)
+            from tradingagents.dataflows.providers.us.yfinance_news import get_stock_news as get_yf_news
+            logger.info(f"[统一新闻工具] 抓取 Yahoo Finance 新闻 (limit={fetch_limit})...")
+            yf_result = get_yf_news(stock_code, start_date, curr_date, limit=fetch_limit)
+            if yf_result and len(yf_result.strip()) > 50:
+                sections.append(yf_result)
+                logger.info(f"[统一新闻工具] ✅ Yahoo: {len(yf_result)} 字符")
         except Exception as e:
-            logger.warning(f"[统一新闻工具] OpenAI美股新闻获取失败: {e}")
-        
-        # 优先级2: Google新闻（英文搜索）
+            logger.warning(f"[统一新闻工具] Yahoo Finance 失败: {e}")
+
+        # 源2: Alpha Vantage（免费 Key，带情绪评分，与 Yahoo 互补）
         try:
-            if hasattr(self.toolkit, 'get_google_news'):
-                logger.info(f"[统一新闻工具] 尝试Google美股新闻...")
-                query = f"{stock_code} stock news earnings financial"
-                # 使用LangChain工具的正确调用方式：.invoke()方法和字典参数
-                result = self.toolkit.get_google_news.invoke({"query": query, "curr_date": curr_date})
-                if result and len(result.strip()) > 50:
-                    logger.info(f"[统一新闻工具] ✅ Google美股新闻获取成功: {len(result)} 字符")
-                    return self._format_news_result(result, "Google美股新闻", model_info)
+            from tradingagents.dataflows.providers.us.alpha_vantage_news import get_news as get_av_news
+            logger.info(f"[统一新闻工具] 抓取 Alpha Vantage 新闻...")
+            av_result = get_av_news(stock_code, start_date, curr_date)
+            if av_result and len(av_result.strip()) > 50 and "No news found" not in av_result:
+                sections.append(av_result)
+                logger.info(f"[统一新闻工具] ✅ Alpha Vantage: {len(av_result)} 字符")
         except Exception as e:
-            logger.warning(f"[统一新闻工具] Google美股新闻获取失败: {e}")
-        
-        # 优先级3: FinnHub新闻（如果可用）
-        try:
-            if hasattr(self.toolkit, 'get_finnhub_news'):
-                logger.info(f"[统一新闻工具] 尝试FinnHub美股新闻...")
-                # 使用LangChain工具的正确调用方式：.invoke()方法和字典参数
-                result = self.toolkit.get_finnhub_news.invoke({"symbol": stock_code, "max_results": min(max_news, 50)})
-                if result and len(result.strip()) > 50:
-                    logger.info(f"[统一新闻工具] ✅ FinnHub美股新闻获取成功: {len(result)} 字符")
-                    return self._format_news_result(result, "FinnHub美股新闻", model_info)
-        except Exception as e:
-            logger.warning(f"[统一新闻工具] FinnHub美股新闻获取失败: {e}")
-        
+            logger.warning(f"[统一新闻工具] Alpha Vantage 失败: {e}")
+
+        if sections:
+            combined = "\n\n---\n\n".join(sections)
+            source_label = "Yahoo Finance + Alpha Vantage" if len(sections) > 1 else (
+                "Yahoo Finance" if "Yahoo Finance" in sections[0] else "Alpha Vantage"
+            )
+            logger.info(f"[统一新闻工具] ✅ 美股新闻合并完成: {len(sections)} 个源, {len(combined)} 字符")
+            return self._format_news_result(combined, source_label, model_info)
+
+        # 降级链：仅在双源都失败时使用
+        fallbacks = [
+            ("实时新闻聚合", lambda: self.toolkit.get_realtime_stock_news.invoke(
+                {"ticker": stock_code, "curr_date": curr_date}) if hasattr(self.toolkit, 'get_realtime_stock_news') else None),
+            ("Google", lambda: self.toolkit.get_google_news.invoke(
+                {"query": f"{stock_code} stock news earnings financial", "curr_date": curr_date})
+                if hasattr(self.toolkit, 'get_google_news') else None),
+        ]
+        for label, fetch in fallbacks:
+            try:
+                result = fetch()
+                if result and len(str(result).strip()) > 50:
+                    logger.info(f"[统一新闻工具] ✅ 降级源 {label} 成功")
+                    return self._format_news_result(str(result), label, model_info)
+            except Exception as e:
+                logger.warning(f"[统一新闻工具] 降级源 {label} 失败: {e}")
+
         return "❌ 无法获取美股新闻数据，所有新闻源均不可用"
     
     def _format_news_result(self, news_content: str, source: str, model_info: str = "") -> str:
@@ -553,13 +569,13 @@ def create_unified_news_tool(toolkit):
     """创建统一新闻工具函数"""
     analyzer = UnifiedNewsAnalyzer(toolkit)
     
-    def get_stock_news_unified(stock_code: str, max_news: int = 100, model_info: str = ""):
+    def get_stock_news_unified(stock_code: str, max_news: int = 10, model_info: str = ""):
         """
         统一新闻获取工具
         
         Args:
             stock_code (str): 股票代码 (支持A股如000001、港股如0700.HK、美股如AAPL)
-            max_news (int): 最大新闻数量，默认100
+            max_news (int): 最大新闻数量，默认10
             model_info (str): 当前使用的模型信息，用于特殊处理
         
         Returns:
@@ -580,7 +596,7 @@ def create_unified_news_tool(toolkit):
 - 根据股票类型选择最佳新闻源
 - A股: 优先东方财富 -> Google中文 -> OpenAI
 - 港股: 优先Google -> OpenAI -> 实时新闻
-- 美股: 优先OpenAI -> Google英文 -> FinnHub
+- 美股: Yahoo Finance + Alpha Vantage 双源合并 -> Google 降级
 - 返回格式化的新闻内容
 - 支持Google模型的特殊长度控制
 """

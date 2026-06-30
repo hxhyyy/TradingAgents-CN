@@ -265,6 +265,16 @@ def get_finnhub_news(
     return f"## {ticker} News, from {before} to {curr_date}:\n" + str(combined_result)
 
 
+def get_reddit_sentiment(
+    ticker: Annotated[str, "ticker symbol of the company"],
+    curr_date: Annotated[str, "Current date in yyyy-mm-dd format"],
+    look_back_days: Annotated[int, "how many days to look back"] = 7,
+    max_limit_per_day: Annotated[int, "Maximum posts per day"] = 5,
+) -> str:
+    """Reddit 讨论情绪（读取本地 reddit_data 缓存）。"""
+    return get_reddit_company_news(ticker, curr_date, look_back_days, max_limit_per_day)
+
+
 def get_finnhub_company_insider_sentiment(
     ticker: Annotated[str, "ticker symbol for the company"],
     curr_date: Annotated[
