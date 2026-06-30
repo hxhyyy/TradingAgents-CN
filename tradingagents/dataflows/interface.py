@@ -1191,7 +1191,7 @@ def get_fundamentals_openai(ticker, curr_date):
                     cached_data = cache.load_fundamentals_data(cached_key)
                     if cached_data:
                         logger.info(f"💾 [缓存] 从 {cache_name} 缓存加载基本面数据: {ticker}")
-                        return cached_data
+                        return _append_btc_treasury_metrics(ticker, curr_date, cached_data)
 
         # 🔥 从数据库获取数据源优先级顺序
         priority_order = us_manager._get_data_source_priority_order(ticker)
@@ -1203,23 +1203,23 @@ def get_fundamentals_openai(ticker, curr_date):
                 if source == USDataSource.SINA:
                     result = _get_fundamentals_sina_akshare(ticker, curr_date, cache)
                     if result:
-                        return result
+                        return _append_btc_treasury_metrics(ticker, curr_date, result)
 
                 elif source == USDataSource.ALPHA_VANTAGE:
                     result = _get_fundamentals_alpha_vantage(ticker, curr_date, cache)
                     if result:
-                        return result
+                        return _append_btc_treasury_metrics(ticker, curr_date, result)
 
                 elif source == USDataSource.YFINANCE:
                     result = _get_fundamentals_yfinance(ticker, curr_date, cache)
                     if result:
-                        return result
+                        return _append_btc_treasury_metrics(ticker, curr_date, result)
 
                 elif source == USDataSource.FINNHUB:
                     result = get_fundamentals_finnhub(ticker, curr_date)
                     if result and "❌" not in result:
                         cache.save_fundamentals_data(ticker, result, data_source="finnhub")
-                        return result
+                        return _append_btc_treasury_metrics(ticker, curr_date, result)
 
             except Exception as e:
                 logger.warning(f"⚠️ [{source.value}] 获取失败: {e}，尝试下一个数据源")
@@ -1244,6 +1244,26 @@ def get_fundamentals_openai(ticker, curr_date):
     except Exception as e:
         logger.error(f"❌ [美股基本面] 获取失败: {str(e)}")
         return f"❌ 获取 {ticker} 基本面数据失败: {str(e)}"
+
+
+def _append_btc_treasury_metrics(ticker: str, curr_date: str, report: str) -> str:
+    """Append BTC holdings / mNAV section for Bitcoin treasury stocks (e.g. MSTR)."""
+    if not report or report.startswith("❌"):
+        return report
+    if "比特币国库指标" in report or "官方国库数据" in report:
+        return report
+    try:
+        from .providers.us.btc_treasury import get_btc_treasury_report, is_btc_treasury_symbol
+
+        if not is_btc_treasury_symbol(ticker):
+            return report
+        treasury = get_btc_treasury_report(ticker, curr_date)
+        if treasury:
+            logger.info(f"✅ [BTC Treasury] 已附加持币/mNAV 数据: {ticker}")
+            return f"{report}\n\n---\n\n{treasury}"
+    except Exception as exc:
+        logger.warning(f"⚠️ [BTC Treasury] 附加数据失败 {ticker}: {exc}")
+    return report
 
 
 def _get_fundamentals_sina_akshare(ticker, curr_date, cache):

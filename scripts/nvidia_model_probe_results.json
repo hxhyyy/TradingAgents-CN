@@ -1,0 +1,461 @@
+{
+  "nvidia/nemotron-3-ultra-550b-a55b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.9,
+      "reply_preview": "The user wants me to reply with exactly \"OK\". This is a simple request",
+      "prompt_tokens": 21,
+      "completion_tokens": 16
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 26.49,
+      "reply_preview": "The user wants a brief summary of MSTR (MicroStrategy) based on the provided dat",
+      "prompt_tokens": 49974,
+      "completion_tokens": 256,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 14.84,
+      "reply_preview": "*   **Strong Technical Momentum:** MSTR trades at $385.2",
+      "prompt_tokens": 58296,
+      "completion_tokens": 256,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 7.81,
+      "reply_preview": "*   **Strong Technical Momentum:** MSTR trades at $385.20, comfortably above its",
+      "prompt_tokens": 133190,
+      "completion_tokens": 256,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "nvidia/nemotron-3-super-120b-a12b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 6.35,
+      "reply_preview": "We need to respond with exactly \"OK\". No extra spaces or punctuation.",
+      "prompt_tokens": 21,
+      "completion_tokens": 16
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 5.49,
+      "reply_preview": "We need to summarize MSTR using the data block. The data repeats many times: pri",
+      "prompt_tokens": 49974,
+      "completion_tokens": 256,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 5.81,
+      "reply_preview": "- **Price & Momentum:** MSTR is trading at $385.2, above its 5‑day moving averag",
+      "prompt_tokens": 58296,
+      "completion_tokens": 256,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 8.09,
+      "reply_preview": "- **Price momentum:** MSTR’s current price ($385.2) sits above its 5‑day",
+      "prompt_tokens": 133190,
+      "completion_tokens": 256,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "nvidia/nemotron-4-340b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.17,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'b0fcd392-e905-4ab4-8eb9-aeae95c30b37': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}",
+      "context_limit": null
+    }
+  },
+  "nvidia/llama-3.1-nemotron-70b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.15,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '9b96341b-9791-4db9-a00d-4e43aa192a39': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}",
+      "context_limit": null
+    }
+  },
+  "nvidia/llama-3.1-nemotron-51b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.16,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '5beba52c-65a9-4f46-8cd9-656689a1b205': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}",
+      "context_limit": null
+    }
+  },
+  "mistralai/mistral-large-3-675b-instruct-2512": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.46,
+      "reply_preview": "OK",
+      "prompt_tokens": 8,
+      "completion_tokens": 2
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 7.54,
+      "reply_preview": "Here’s a concise summary of **MicroStrategy (MSTR)** based on the provided data:",
+      "prompt_tokens": 49962,
+      "completion_tokens": 167,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 5.86,
+      "reply_preview": "- **Price & Technical Indicators**: MicroStrategy (MSTR) is trading at $385.2, a",
+      "prompt_tokens": 58284,
+      "completion_tokens": 131,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 18.38,
+      "reply_preview": "**Summary of MSTR Analysis:**\n\n- **Technical Indicators:** MSTR's current price ",
+      "prompt_tokens": 133178,
+      "completion_tokens": 148,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "qwen/qwen3.5-397b-a17b": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 90.0,
+      "error": "The read operation timed out"
+    }
+  },
+  "qwen/qwen3.5-122b-a10b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 2.77,
+      "reply_preview": "",
+      "prompt_tokens": 17,
+      "completion_tokens": 0
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 10.92,
+      "reply_preview": "*   **Bullish Technical Momentum:** MSTR is trading at $385.2, above its 5-day m",
+      "prompt_tokens": 46473,
+      "completion_tokens": 135,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 13.25,
+      "reply_preview": "*   **Bullish Technical Momentum:** MSTR is trading at $385.2, breaking above it",
+      "prompt_tokens": 54211,
+      "completion_tokens": 139,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 82.91,
+      "reply_preview": "*   **Bullish Technical Momentum:** The stock is trading at $385.2, above its 5-",
+      "prompt_tokens": 123849,
+      "completion_tokens": 138,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "qwen/qwen3-next-80b-a3b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.54,
+      "reply_preview": "OK",
+      "prompt_tokens": 13,
+      "completion_tokens": 2
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 4.27,
+      "reply_preview": "- **Bullish Technical Signal**: MSTR price ($385.2) is above its 5-day MA ($372.",
+      "prompt_tokens": 46467,
+      "completion_tokens": 126,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 5.01,
+      "reply_preview": "- **Bullish Technical Signal**: MSTR trading at $385.2 above its 5-day MA ($372.",
+      "prompt_tokens": 54205,
+      "completion_tokens": 113,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 7.39,
+      "reply_preview": "- **Bullish Technical Signal**: MSTR price ($385.2) is above its 5-day MA ($372.",
+      "prompt_tokens": 123843,
+      "completion_tokens": 116,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "stockmark/stockmark-2-100b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 1.21,
+      "reply_preview": "OK",
+      "prompt_tokens": 10,
+      "completion_tokens": 2
+    },
+    "ctx_30k": {
+      "ok": false,
+      "status": 400,
+      "elapsed_s": 0.9,
+      "error": "This model's maximum context length is 32768 tokens. However, your request has 39457 input tokens. Please reduce the length of the input messages. (parameter=input_tokens, value=39457) None",
+      "context_limit": 32768,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": false,
+      "status": 400,
+      "elapsed_s": 0.95,
+      "error": "This model's maximum context length is 32768 tokens. However, your request has 46027 input tokens. Please reduce the length of the input messages. (parameter=input_tokens, value=46027) None",
+      "context_limit": 32768,
+      "estimated_input_tokens": 35050
+    }
+  },
+  "moonshotai/kimi-k2.6": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.6,
+      "reply_preview": " OK",
+      "prompt_tokens": 14,
+      "completion_tokens": 2
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 8.29,
+      "reply_preview": " • **Technical Momentum**: MSTR at $385.2 trades above its 5-day MA ($372.1) wit",
+      "prompt_tokens": 39458,
+      "completion_tokens": 109,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 7.04,
+      "reply_preview": " • **Technical Momentum**: MSTR at $385.2 trades above its 5-day MA ($372.1) wit",
+      "prompt_tokens": 46028,
+      "completion_tokens": 103,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 12.13,
+      "reply_preview": " • **Premium Valuation**: MSTR trades at $385.2, ~3.5% above its 5-day moving av",
+      "prompt_tokens": 105154,
+      "completion_tokens": 127,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "deepseek-ai/deepseek-v4-pro": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 46.92,
+      "reply_preview": "OK",
+      "prompt_tokens": 9,
+      "completion_tokens": 2
+    },
+    "ctx_30k": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 180.0,
+      "error": "The read operation timed out",
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 180.2,
+      "error": "The read operation timed out",
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 180.25,
+      "error": "The read operation timed out",
+      "estimated_input_tokens": 80050
+    }
+  },
+  "deepseek-ai/deepseek-v4-flash": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 90.23,
+      "error": "The read operation timed out"
+    }
+  },
+  "z-ai/glm-5.1": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 5.46,
+      "reply_preview": "OK",
+      "prompt_tokens": 10,
+      "completion_tokens": 2
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 14.44,
+      "reply_preview": "- **Bullish Technicals:** Trading at $385.2, above the 5-day moving average ($37",
+      "prompt_tokens": 41205,
+      "completion_tokens": 104,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 6.69,
+      "reply_preview": "- **Bullish Technicals:** MSTR is trading at $385.2, above its 5-day moving aver",
+      "prompt_tokens": 48067,
+      "completion_tokens": 104,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 8.87,
+      "reply_preview": "- **Price & Momentum**: MSTR trades at $385.2, trading above its 5-day moving av",
+      "prompt_tokens": 109821,
+      "completion_tokens": 120,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "meta/llama-3.3-70b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.58,
+      "reply_preview": "OK",
+      "prompt_tokens": 40,
+      "completion_tokens": 2
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 54.99,
+      "reply_preview": "Here are 3 key points about MSTR market data:\n* The current price of MSTR is $38",
+      "prompt_tokens": 38605,
+      "completion_tokens": 97,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 9.59,
+      "reply_preview": "Here are 3 bullet points summarizing the analysis of MSTR:\n\n* The current price ",
+      "prompt_tokens": 45029,
+      "completion_tokens": 118,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 27.62,
+      "reply_preview": "Here are three key points about MSTR market data:\n* The current price of MSTR is",
+      "prompt_tokens": 102841,
+      "completion_tokens": 106,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "openai/gpt-oss-120b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.77,
+      "reply_preview": "",
+      "prompt_tokens": 70,
+      "completion_tokens": 16
+    },
+    "ctx_30k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 3.45,
+      "reply_preview": "- **Technical outlook:** The stock is trading at $385.2, above its 5‑day moving ",
+      "prompt_tokens": 38642,
+      "completion_tokens": 224,
+      "estimated_input_tokens": 30050
+    },
+    "ctx_35k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 3.33,
+      "reply_preview": "- **Technical outlook:** MSTR is trading at $385.2, comfortably above its 5‑day ",
+      "prompt_tokens": 45066,
+      "completion_tokens": 236,
+      "estimated_input_tokens": 35050
+    },
+    "ctx_80k": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 5.77,
+      "reply_preview": "- **Technical outlook:** MSTR is trading at $385.2, comfortably above its 5‑day ",
+      "prompt_tokens": 102878,
+      "completion_tokens": 256,
+      "estimated_input_tokens": 80050
+    }
+  },
+  "writer/palmyra-fin-70b-32k": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.22,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '316490c6-f1ed-41f9-9da8-3fa9e885653b': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}",
+      "context_limit": null
+    }
+  }
+}

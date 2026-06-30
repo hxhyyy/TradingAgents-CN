@@ -1,0 +1,175 @@
+{
+  "nvidia/nemotron-3-ultra-550b-a55b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.6,
+      "reply": "The user wants me to reply with exactly \"OK\". This is a simple request",
+      "prompt_tokens": 21,
+      "completion_tokens": 16
+    }
+  },
+  "nvidia/nemotron-3-super-120b-a12b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 2.39,
+      "reply": "We need to reply with exactly \"OK\". No extra spaces or punctuation.",
+      "prompt_tokens": 21,
+      "completion_tokens": 16
+    }
+  },
+  "nvidia/nemotron-4-340b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.16,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function 'b0fcd392-e905-4ab4-8eb9-aeae95c30b37': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}"
+    }
+  },
+  "nvidia/llama-3.1-nemotron-70b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.16,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '9b96341b-9791-4db9-a00d-4e43aa192a39': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}"
+    }
+  },
+  "nvidia/llama-3.1-nemotron-51b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.16,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '5beba52c-65a9-4f46-8cd9-656689a1b205': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}"
+    }
+  },
+  "mistralai/mistral-large-3-675b-instruct-2512": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.42,
+      "reply": "OK",
+      "prompt_tokens": 8,
+      "completion_tokens": 2
+    }
+  },
+  "qwen/qwen3.5-397b-a17b": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 120.01,
+      "error": "The read operation timed out"
+    }
+  },
+  "qwen/qwen3.5-122b-a10b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.94,
+      "reply": "",
+      "prompt_tokens": 17,
+      "completion_tokens": 0
+    }
+  },
+  "qwen/qwen3-next-80b-a3b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.34,
+      "reply": "OK",
+      "prompt_tokens": 13,
+      "completion_tokens": 2
+    }
+  },
+  "stockmark/stockmark-2-100b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.56,
+      "reply": "OK",
+      "prompt_tokens": 10,
+      "completion_tokens": 2
+    }
+  },
+  "moonshotai/kimi-k2.6": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.58,
+      "reply": "OK",
+      "prompt_tokens": 14,
+      "completion_tokens": 2
+    }
+  },
+  "deepseek-ai/deepseek-v4-pro": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 120.0,
+      "error": "The read operation timed out"
+    }
+  },
+  "deepseek-ai/deepseek-v4-flash": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": null,
+      "elapsed_s": 120.21,
+      "error": "The read operation timed out"
+    }
+  },
+  "z-ai/glm-5.1": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.82,
+      "reply": "OK",
+      "prompt_tokens": 10,
+      "completion_tokens": 2
+    }
+  },
+  "meta/llama-3.3-70b-instruct": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 2.29,
+      "reply": "OK",
+      "prompt_tokens": 40,
+      "completion_tokens": 2
+    }
+  },
+  "openai/gpt-oss-120b": {
+    "listed": true,
+    "ping": {
+      "ok": true,
+      "status": 200,
+      "elapsed_s": 0.89,
+      "reply": "",
+      "prompt_tokens": 70,
+      "completion_tokens": 16
+    }
+  },
+  "writer/palmyra-fin-70b-32k": {
+    "listed": true,
+    "ping": {
+      "ok": false,
+      "status": 404,
+      "elapsed_s": 0.17,
+      "error": "{\"status\":404,\"title\":\"Not Found\",\"detail\":\"Function '316490c6-f1ed-41f9-9da8-3fa9e885653b': Not found for account 'oFHVTpi1cemPOJa6cvDwj1lmHiqTAwlMsNmQp_EZG2c'\"}"
+    }
+  }
+}

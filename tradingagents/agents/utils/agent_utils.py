@@ -1126,6 +1126,26 @@ class Toolkit:
                     from tradingagents.dataflows.providers.us.optimized import get_us_stock_data_cached
                     us_data = get_us_stock_data_cached(ticker, start_date, end_date)
                     result_data.append(f"## 美股市场数据\n{us_data}")
+
+                    # Strategy (MSTR/STRC/...) — attach treasury & capital structure for TA context
+                    try:
+                        from tradingagents.dataflows.providers.us.btc_treasury import (
+                            get_btc_treasury_report,
+                            is_btc_treasury_symbol,
+                        )
+                        if is_btc_treasury_symbol(ticker):
+                            treasury = get_btc_treasury_report(ticker, end_date)
+                            if treasury:
+                                result_data.append(
+                                    f"## Strategy 国库与资本结构\n{treasury}"
+                                )
+                                logger.info(
+                                    f"✅ [统一市场工具] 已附加 Strategy 国库数据: {ticker}"
+                                )
+                    except Exception as treasury_exc:
+                        logger.warning(
+                            f"⚠️ [统一市场工具] Strategy 国库数据附加失败: {treasury_exc}"
+                        )
                 except Exception as e:
                     result_data.append(f"## 美股市场数据\n获取失败: {e}")
 
