@@ -1421,24 +1421,75 @@ class Toolkit:
                     result_data.append(f"## 中文市场情绪\n获取失败: {e}")
 
             else:
-                # 美股：Alpha Vantage 新闻情绪 + Reddit 本地缓存
+                # 美股：Alpha Vantage -> Yahoo -> Finnhub -> Reddit（逐级降级）
                 logger.info(f"🇺🇸 [统一情绪工具] 处理美股情绪...")
                 from datetime import datetime, timedelta
 
                 start_date = (
                     datetime.strptime(curr_date, "%Y-%m-%d") - timedelta(days=7)
                 ).strftime("%Y-%m-%d")
+                got_primary_source = False
 
                 try:
                     from tradingagents.dataflows.providers.us.alpha_vantage_news import (
                         get_news as get_av_news,
                     )
                     av_data = get_av_news(ticker, start_date, curr_date)
-                    if av_data and "No news found" not in av_data:
+                    # Alpha Vantage 常见错误是返回字符串（含 API limit），这里做显式识别和脱敏提示
+                    av_error = (
+                        isinstance(av_data, str)
+                        and "Error retrieving news" in av_data
+                    )
+                    av_limited = av_error and (
+                        "API limit" in av_data or "25 requests per day" in av_data
+                    )
+
+                    if av_data and not av_error and "No news found" not in av_data:
                         result_data.append(f"## Alpha Vantage 新闻情绪\n{av_data}")
                         logger.info(f"🇺🇸 [统一情绪工具] Alpha Vantage 情绪数据获取成功")
+                        got_primary_source = True
+                    elif av_limited:
+                        # 不回显原始错误，避免在报告中暴露 key
+                        result_data.append(
+                            "## Alpha Vantage 新闻情绪\n"
+                            "Alpha Vantage 当日免费额度已用尽，已自动切换 Yahoo/Finnhub 备用源。"
+                        )
+                        logger.warning("🇺🇸 [统一情绪工具] Alpha Vantage 触发限额，切换备用源")
                 except Exception as e:
                     logger.warning(f"🇺🇸 [统一情绪工具] Alpha Vantage 失败: {e}")
+
+                # 备用源1：Yahoo Finance（无情绪分，但可给新闻语境）
+                if not got_primary_source:
+                    try:
+                        from tradingagents.dataflows.providers.us.yfinance_news import (
+                            get_stock_news as get_yf_news,
+                        )
+                        yf_data = get_yf_news(ticker, start_date, curr_date, limit=15)
+                        if yf_data and len(yf_data.strip()) > 50:
+                            result_data.append(
+                                "## Yahoo Finance 新闻（备用源）\n"
+                                "说明：Yahoo 不直接提供标准化情绪分，以下内容用于情绪语境参考。\n"
+                                f"{yf_data}"
+                            )
+                            logger.info("🇺🇸 [统一情绪工具] Yahoo 备用源获取成功")
+                            got_primary_source = True
+                    except Exception as e:
+                        logger.warning(f"🇺🇸 [统一情绪工具] Yahoo 备用源失败: {e}")
+
+                # 备用源2：Finnhub 本地新闻缓存
+                if not got_primary_source:
+                    try:
+                        finnhub_data = interface.get_finnhub_news(ticker, curr_date, 7)
+                        if finnhub_data and "⚠️ 无法获取" not in finnhub_data and len(finnhub_data.strip()) > 50:
+                            result_data.append(
+                                "## Finnhub 新闻（备用源）\n"
+                                "说明：该数据主要为新闻文本聚合，用于辅助判断情绪方向。\n"
+                                f"{finnhub_data}"
+                            )
+                            logger.info("🇺🇸 [统一情绪工具] Finnhub 备用源获取成功")
+                            got_primary_source = True
+                    except Exception as e:
+                        logger.warning(f"🇺🇸 [统一情绪工具] Finnhub 备用源失败: {e}")
 
                 try:
                     from tradingagents.dataflows.interface import get_reddit_company_news
