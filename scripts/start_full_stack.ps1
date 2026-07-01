@@ -81,6 +81,25 @@ function Wait-ForPort($port, $friendlyName, $timeoutSeconds = 30) {
     throw "$friendlyName did not start listening on port $port within $timeoutSeconds seconds."
 }
 
+function Wait-ForBackend($port = 8000, $timeoutSeconds = 90) {
+    $deadline = (Get-Date).AddSeconds($timeoutSeconds)
+    $healthUrl = "http://127.0.0.1:$port/api/health"
+    Write-Host "Waiting for backend (cold start may take 60-90s due to data sync)..." -ForegroundColor DarkGray
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $resp = Invoke-WebRequest -Uri $healthUrl -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
+            if ($resp.StatusCode -eq 200) {
+                Write-Host "Backend is ready at $healthUrl" -ForegroundColor Green
+                return
+            }
+        } catch {
+            # still starting
+        }
+        Start-Sleep -Seconds 2
+    }
+    throw "Backend did not become healthy within $timeoutSeconds seconds. Check logs\backend_stdout.log and logs\backend_stderr.log"
+}
+
 function Start-BackgroundProcess($filePath, $arguments, $workingDirectory, $stdoutLog, $stderrLog, $name) {
     if (Test-Path $stdoutLog) {
         Remove-Item $stdoutLog -Force -ErrorAction SilentlyContinue
@@ -161,7 +180,7 @@ if (-not $existingBackend) {
 } else {
     Write-Step "Backend already running"
 }
-Wait-ForPort -port 8000 -friendlyName "Backend"
+Wait-ForBackend -port 8000 -timeoutSeconds 90
 
 if (-not $existingFrontend) {
     Write-Step "Starting frontend"
