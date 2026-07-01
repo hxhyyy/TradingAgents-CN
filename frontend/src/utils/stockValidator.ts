@@ -5,7 +5,7 @@
 
 export interface StockValidationResult {
   valid: boolean
-  market?: 'A股' | '美股' | '港股'
+  market?: 'A股' | '美股' | '港股' | '加密货币'
   message?: string
   normalizedCode?: string
 }
@@ -73,6 +73,13 @@ export function validateUSStock(code: string): StockValidationResult {
       message: '美股代码不能为空'
     }
   }
+
+  if (cleanCode === 'BTC') {
+    return {
+      valid: false,
+      message: 'BTC 是比特币代码，请在「市场类型」中选择「加密货币」'
+    }
+  }
   
   return {
     valid: true,
@@ -110,13 +117,33 @@ export function validateHKStock(code: string): StockValidationResult {
 }
 
 /**
+ * 加密货币代码格式验证（最小版：仅 BTC / BTCUSDT）
+ */
+export function validateCrypto(code: string): StockValidationResult {
+  const cleanCode = code.trim().toUpperCase().replace(/[^A-Z]/g, '')
+
+  if (cleanCode === 'BTC' || cleanCode === 'BTCUSDT') {
+    return {
+      valid: true,
+      market: '加密货币',
+      normalizedCode: 'BTCUSDT'
+    }
+  }
+
+  return {
+    valid: false,
+    message: '当前仅支持 BTC 或 BTCUSDT（比特币）'
+  }
+}
+
+/**
  * 自动识别股票代码格式并验证
  * @param code 股票代码
  * @param marketHint 市场提示（可选），如果提供则优先验证该市场
  */
 export function validateStockCode(
   code: string,
-  marketHint?: 'A股' | '美股' | '港股'
+  marketHint?: 'A股' | '美股' | '港股' | '加密货币'
 ): StockValidationResult {
   if (!code || !code.trim()) {
     return {
@@ -136,6 +163,17 @@ export function validateStockCode(
         return validateUSStock(trimmedCode)
       case '港股':
         return validateHKStock(trimmedCode)
+      case '加密货币':
+        return validateCrypto(trimmedCode)
+    }
+  }
+  
+  // 自动识别：加密货币优先
+  const cryptoCandidate = trimmedCode.toUpperCase().replace(/[^A-Z]/g, '')
+  if (cryptoCandidate === 'BTC' || cryptoCandidate === 'BTCUSDT') {
+    return {
+      valid: false,
+      message: 'BTC/BTCUSDT 是比特币，请在「市场类型」中选择「加密货币」'
     }
   }
   
@@ -175,7 +213,7 @@ export function validateStockCode(
 /**
  * 获取股票代码格式说明
  */
-export function getStockCodeFormatHelp(market: 'A股' | '美股' | '港股'): string {
+export function getStockCodeFormatHelp(market: 'A股' | '美股' | '港股' | '加密货币'): string {
   switch (market) {
     case 'A股':
       return '6位数字，如：000001（平安银行）、600519（贵州茅台）'
@@ -183,6 +221,8 @@ export function getStockCodeFormatHelp(market: 'A股' | '美股' | '港股'): st
       return '1-5个字母，如：AAPL（苹果）、TSLA（特斯拉）'
     case '港股':
       return '1-5位数字，如：700（腾讯）、9988（阿里巴巴）'
+    case '加密货币':
+      return 'BTC 或 BTCUSDT（比特币，Binance 现货对）'
     default:
       return ''
   }
@@ -191,7 +231,7 @@ export function getStockCodeFormatHelp(market: 'A股' | '美股' | '港股'): st
 /**
  * 获取股票代码示例
  */
-export function getStockCodeExamples(market: 'A股' | '美股' | '港股'): string[] {
+export function getStockCodeExamples(market: 'A股' | '美股' | '港股' | '加密货币'): string[] {
   switch (market) {
     case 'A股':
       return ['000001', '600519', '000858', '300750']
@@ -199,6 +239,8 @@ export function getStockCodeExamples(market: 'A股' | '美股' | '港股'): stri
       return ['AAPL', 'MSFT', 'GOOGL', 'TSLA']
     case '港股':
       return ['00700', '09988', '01810', '03690']
+    case '加密货币':
+      return ['BTC', 'BTCUSDT']
     default:
       return []
   }
@@ -209,7 +251,7 @@ export function getStockCodeExamples(market: 'A股' | '美股' | '港股'): stri
  * @param code 原始代码
  * @param market 市场类型
  */
-export function formatStockCode(code: string, market: 'A股' | '美股' | '港股'): string {
+export function formatStockCode(code: string, market: 'A股' | '美股' | '港股' | '加密货币'): string {
   const validation = validateStockCode(code, market)
   return validation.normalizedCode || code
 }

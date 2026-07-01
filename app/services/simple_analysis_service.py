@@ -529,6 +529,14 @@ def create_analysis_config(
     # 添加分析师配置
     config["selected_analysts"] = selected_analysts
     config["debug"] = False
+    config["market_type"] = market_type
+
+    if market_type == "加密货币":
+        blocked = {"fundamentals", "基本面", "基本面分析师"}
+        filtered = [a for a in selected_analysts if a not in blocked]
+        if len(filtered) != len(selected_analysts):
+            logger.info("₿ [加密货币] 已自动移除基本面分析师（比特币无传统财报）")
+        config["selected_analysts"] = filtered or ["market", "news", "social"]
 
     # 🔧 添加research_depth到配置中，使工具函数能够访问分析级别信息
     config["research_depth"] = research_depth
@@ -2533,20 +2541,32 @@ class SimpleAnalysisService:
 
             # 🔥 根据股票代码推断市场类型
             from tradingagents.utils.stock_utils import StockUtils
-            market_info = StockUtils.get_market_info(stock_symbol)
-            market_type_map = {
-                "china_a": "A股",
-                "hong_kong": "港股",
-                "us": "美股",
-                "unknown": "A股"  # 默认为A股
-            }
-            market_type = market_type_map.get(market_info.get("market", "unknown"), "A股")
+            from tradingagents.dataflows.providers.crypto.binance import is_supported_crypto
+
+            if is_supported_crypto(stock_symbol):
+                market_type = "加密货币"
+                market_info = StockUtils.get_analysis_market_info(stock_symbol, "加密货币")
+                stock_name = "比特币 (BTC)"
+            else:
+                market_info = StockUtils.get_market_info(stock_symbol)
+                market_type_map = {
+                    "china_a": "A股",
+                    "hong_kong": "港股",
+                    "us": "美股",
+                    "crypto": "加密货币",
+                    "unknown": "A股"  # 默认为A股
+                }
+                market_type = market_type_map.get(market_info.get("market", "unknown"), "A股")
+                stock_name = stock_symbol  # 默认使用股票代码
             logger.info(f"📊 推断市场类型: {stock_symbol} -> {market_type}")
 
             # 🔥 获取股票名称
-            stock_name = stock_symbol  # 默认使用股票代码
+            if market_type != "加密货币":
+                stock_name = stock_symbol  # 默认使用股票代码
             try:
-                if market_info.get("market") == "china_a":
+                if market_type == "加密货币":
+                    pass
+                elif market_info.get("market") == "china_a":
                     # A股：使用统一接口获取股票信息
                     from tradingagents.dataflows.interface import get_china_stock_info_unified
                     stock_info = get_china_stock_info_unified(stock_symbol)

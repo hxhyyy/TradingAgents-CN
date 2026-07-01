@@ -17,6 +17,7 @@ class StockMarket(Enum):
     CHINA_A = "china_a"      # 中国A股
     HONG_KONG = "hong_kong"  # 港股
     US = "us"                # 美股
+    CRYPTO = "crypto"        # 加密货币
     UNKNOWN = "unknown"      # 未知
 
 
@@ -181,6 +182,7 @@ class StockUtils:
             StockMarket.CHINA_A: "中国A股",
             StockMarket.HONG_KONG: "港股",
             StockMarket.US: "美股",
+            StockMarket.CRYPTO: "加密货币",
             StockMarket.UNKNOWN: "未知市场"
         }
         
@@ -193,8 +195,36 @@ class StockUtils:
             "data_source": data_source,
             "is_china": market == StockMarket.CHINA_A,
             "is_hk": market == StockMarket.HONG_KONG,
-            "is_us": market == StockMarket.US
+            "is_us": market == StockMarket.US,
+            "is_crypto": market == StockMarket.CRYPTO,
         }
+
+    @staticmethod
+    def get_analysis_market_info(ticker: str, market_type_hint: Optional[str] = None) -> Dict:
+        """
+        结合用户选择的市场类型返回分析用市场信息。
+        加密货币走独立分支，不影响 A股/港股/美股 的自动识别逻辑。
+        """
+        if market_type_hint == "加密货币":
+            from tradingagents.dataflows.providers.crypto.binance import normalize_crypto_symbol
+
+            symbol = normalize_crypto_symbol(ticker)
+            return {
+                "ticker": symbol,
+                "market": StockMarket.CRYPTO.value,
+                "market_name": "加密货币",
+                "currency_name": "USDT",
+                "currency_symbol": "USDT",
+                "data_source": "binance",
+                "is_china": False,
+                "is_hk": False,
+                "is_us": False,
+                "is_crypto": True,
+            }
+
+        info = StockUtils.get_market_info(ticker)
+        info["is_crypto"] = False
+        return info
 
 
 # 便捷函数，保持向后兼容

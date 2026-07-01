@@ -80,6 +80,10 @@
                           <span>🇭🇰 港股市场</span>
                           <span style="color: #909399; font-size: 12px; margin-left: 8px;">（1-5位数字）</span>
                         </el-option>
+                        <el-option label="₿ 加密货币" value="加密货币">
+                          <span>₿ 加密货币</span>
+                          <span style="color: #909399; font-size: 12px; margin-left: 8px;">（BTC / BTCUSDT）</span>
+                        </el-option>
                       </el-select>
                     </el-form-item>
                   </el-col>
@@ -128,7 +132,8 @@
                     class="analyst-card"
                     :class="{ 
                       active: analysisForm.selectedAnalysts.includes(analyst.name),
-                      disabled: analyst.name === '社媒分析师' && analysisForm.market === 'A股'
+                      disabled: (analyst.name === '社媒分析师' && analysisForm.market === 'A股')
+                        || (analyst.name === '基本面分析师' && analysisForm.market === '加密货币')
                     }"
                     @click="toggleAnalyst(analyst.name)"
                   >
@@ -153,6 +158,13 @@
                 <el-alert
                   v-if="analysisForm.market === 'A股'"
                   title="A股市场暂不支持社媒分析（国内数据源限制）"
+                  type="info"
+                  :closable="false"
+                  style="margin-top: 12px"
+                />
+                <el-alert
+                  v-if="analysisForm.market === '加密货币'"
+                  title="加密货币分析使用 Binance 行情数据；基本面分析师已禁用（比特币无传统财报）"
                   type="info"
                   :closable="false"
                   style="margin-top: 12px"
@@ -725,7 +737,7 @@ marked.setOptions({
 })
 
 // 市场类型定义
-type MarketType = 'A股' | '美股' | '港股'
+type MarketType = 'A股' | '美股' | '港股' | '加密货币'
 
 // 表单类型定义
 interface AnalysisForm {
@@ -840,6 +852,13 @@ const onStockCodeInput = () => {
 
 // 市场类型变更时的处理
 const onMarketChange = () => {
+  if (analysisForm.market === '加密货币') {
+    const idx = analysisForm.selectedAnalysts.indexOf('基本面分析师')
+    if (idx > -1) {
+      analysisForm.selectedAnalysts.splice(idx, 1)
+    }
+  }
+
   // 重新验证股票代码
   if (analysisForm.stockCode.trim()) {
     validateStockCodeInput()
@@ -893,6 +912,9 @@ const fetchStockInfo = () => {
 // 切换分析师
 const toggleAnalyst = (analystName: string) => {
   if (analystName === '社媒分析师' && analysisForm.market === 'A股') {
+    return
+  }
+  if (analystName === '基本面分析师' && analysisForm.market === '加密货币') {
     return
   }
 
