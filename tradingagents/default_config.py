@@ -17,6 +17,8 @@ DEFAULT_CONFIG = {
     "max_debate_rounds": 1,
     "max_risk_discuss_rounds": 1,
     "max_recur_limit": 100,
+    # 分析视角：value=价值分析, trend=趋势分析（与 selected_analysts 正交）
+    "analysis_perspective": "value",
     # Tool settings - 从环境变量读取，提供默认值
     "online_tools": os.getenv("ONLINE_TOOLS_ENABLED", "false").lower() == "true",
     "online_news": os.getenv("ONLINE_NEWS_ENABLED", "true").lower() == "true", 

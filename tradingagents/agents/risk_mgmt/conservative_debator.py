@@ -4,6 +4,11 @@ import json
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+from tradingagents.agents.utils.perspective_utils import (
+    build_perspective_debate_guidance,
+    build_risk_debate_role_hint,
+    get_perspective_label,
+)
 logger = get_logger("default")
 
 
@@ -37,7 +42,13 @@ def create_safe_debator(llm):
                        len(current_risky_response) + len(current_neutral_response))
         logger.info(f"  - 总Prompt长度: {total_length:,} 字符 (~{total_length//4:,} tokens)")
 
-        prompt = f"""作为安全/保守风险分析师，您的主要目标是保护资产、最小化波动性，并确保稳定、可靠的增长。您优先考虑稳定性、安全性和风险缓解，仔细评估潜在损失、经济衰退和市场波动。在评估交易员的决策或计划时，请批判性地审查高风险要素，指出决策可能使公司面临不当风险的地方，以及更谨慎的替代方案如何能够确保长期收益。以下是交易员的决策：
+        prompt = f"""作为安全/保守风险分析师，您的主要目标是保护资产、最小化波动性，并确保稳定、可靠的增长。您优先考虑稳定性、安全性和风险缓解，仔细评估潜在损失、经济衰退和市场波动。
+
+**本轮风险辩论服务于：{get_perspective_label()}**
+{build_risk_debate_role_hint("safe")}
+{build_perspective_debate_guidance()}
+
+在评估交易员的决策或计划时，请批判性地审查高风险要素，指出决策可能使公司面临不当风险的地方，以及更谨慎的替代方案如何能够确保长期收益。以下是交易员的决策：
 
 {trader_decision}
 

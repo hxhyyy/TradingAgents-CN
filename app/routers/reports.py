@@ -480,6 +480,9 @@ async def download_report(
             content_parts.append(f"**分析日期**: {analysis_date}")
             content_parts.append(f"**分析师**: {', '.join(doc.get('analysts', []))}")
             content_parts.append(f"**研究深度**: {doc.get('research_depth', 1)}")
+            from tradingagents.agents.utils.perspective_utils import get_perspective_label, normalize_analysis_perspective
+            _pl = get_perspective_label(normalize_analysis_perspective(doc.get("analysis_perspective", "value")))
+            content_parts.append(f"**分析视角**: {_pl}")
             content_parts.append("")
 
             # 添加摘要

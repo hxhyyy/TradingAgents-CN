@@ -30,6 +30,12 @@ class BatchStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class AnalysisPerspective(str, Enum):
+    """分析视角（与分析师勾选正交）"""
+    VALUE = "value"   # 价值分析
+    TREND = "trend"   # 趋势分析
+
+
 class AnalysisParameters(BaseModel):
     """分析参数模型
 
@@ -43,6 +49,7 @@ class AnalysisParameters(BaseModel):
     market_type: str = "A股"
     analysis_date: Optional[datetime] = None
     research_depth: str = "标准"  # 默认使用3级标准分析（推荐）
+    analysis_perspective: str = "value"  # value=价值分析, trend=趋势分析
     selected_analysts: List[str] = Field(default_factory=lambda: ["market", "fundamentals", "news", "social"])
     custom_prompt: Optional[str] = None
     include_sentiment: bool = True

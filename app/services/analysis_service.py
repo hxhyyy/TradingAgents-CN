@@ -185,7 +185,8 @@ class AnalysisService:
                 llm_provider=llm_provider,
                 market_type=getattr(task.parameters, 'market_type', "A股"),
                 quick_model_config=quick_model_config,  # 传递模型配置
-                deep_model_config=deep_model_config     # 传递模型配置
+                deep_model_config=deep_model_config,     # 传递模型配置
+                analysis_perspective=getattr(task.parameters, 'analysis_perspective', 'value'),
             )
 
             # 启动引擎
@@ -309,7 +310,8 @@ class AnalysisService:
                 llm_provider=llm_provider,
                 market_type=getattr(task.parameters, 'market_type', "A股"),
                 quick_model_config=quick_model_config,  # 传递模型配置
-                deep_model_config=deep_model_config     # 传递模型配置
+                deep_model_config=deep_model_config,     # 传递模型配置
+                analysis_perspective=getattr(task.parameters, 'analysis_perspective', 'value'),
             )
 
             # 获取TradingAgents实例
@@ -676,7 +678,8 @@ class AnalysisService:
                 llm_provider=llm_provider,
                 market_type=getattr(task.parameters, 'market_type', "A股"),
                 quick_model_config=quick_model_config,  # 传递模型配置
-                deep_model_config=deep_model_config     # 传递模型配置
+                deep_model_config=deep_model_config,     # 传递模型配置
+                analysis_perspective=getattr(task.parameters, 'analysis_perspective', 'value'),
             )
             
             if progress_callback:

@@ -146,6 +146,14 @@
                     <el-option label="🏆 5级 - 全面分析 (15-25分钟/只)" value="5" />
                   </el-select>
                 </el-form-item>
+
+                <el-form-item label="分析视角">
+                  <el-radio-group v-model="batchForm.analysisPerspective" size="large">
+                    <el-radio-button label="value">💎 价值分析</el-radio-button>
+                    <el-radio-button label="trend">📉 趋势分析</el-radio-button>
+                  </el-radio-group>
+                  <div class="form-hint">与分析师勾选独立，仅影响最终结论框架</div>
+                </el-form-item>
               </div>
 
               <!-- 分析师选择 -->
@@ -324,6 +332,7 @@ const batchForm = reactive({
   title: '',
   description: '',
   depth: '3',  // 默认3级标准分析，将在 onMounted 中从用户偏好加载
+  analysisPerspective: 'value' as 'value' | 'trend',
   analysts: [...DEFAULT_ANALYSTS],  // 将在 onMounted 中从用户偏好加载
   includeSentiment: true,
   includeRisk: true,
@@ -514,6 +523,7 @@ const submitBatchAnalysis = async () => {
           return markets.size === 1 ? Array.from(markets)[0] : undefined
         })(),
         research_depth: batchForm.depth,
+        analysis_perspective: batchForm.analysisPerspective,
         selected_analysts: convertAnalystNamesToIds(batchForm.analysts),
         include_sentiment: batchForm.includeSentiment,
         include_risk: batchForm.includeRisk,

@@ -63,10 +63,19 @@ class SignalProcessor:
         logger.info(f"🔍 [SignalProcessor] 处理信号: 股票={stock_symbol}, 市场={market_info['market_name']}, 货币={currency}",
                    extra={'stock_symbol': stock_symbol, 'market': market_info['market_name'], 'currency': currency})
 
+        from tradingagents.agents.utils.perspective_utils import (
+            get_analysis_perspective,
+            get_perspective_label,
+        )
+        perspective = get_analysis_perspective()
+        perspective_label = get_perspective_label(perspective)
+
         messages = [
             (
                 "system",
-                f"""您是一位专业的金融分析助手，负责从交易员的分析报告中提取结构化的投资决策信息。
+                f"""您是一位专业的金融分析助手，负责从风险管理委员会主席的最终决策报告中提取结构化的投资决策信息。
+
+**当前分析视角：{perspective_label}**（{"长期估值与基本面为主" if perspective == "value" else "趋势与交易纪律为主"}）
 
 请从提供的分析报告中提取以下信息，并以JSON格式返回：
 
@@ -88,6 +97,9 @@ class SignalProcessor:
 特别注意：
 - 股票代码 {stock_symbol or '未知'} 是{market_info['market_name']}，使用{currency}计价
 - 目标价格必须与股票的交易货币一致（{currency_symbol}）
+- 如果报告中同时出现「下行保护线 / 残余权益锚 / 悲观底线」与「合理价值区间 / 12个月目标价」，请只提取**12个月合理价值中枢**作为 target_price
+- 对价值分析视角，严禁把止损位、支撑位、残余净资产底线、极端熊市价格当作 target_price
+- 若报告明确给出“合理价值区间/目标价区间”，优先取其中的中枢值；只有在不存在区间时才取单点目标价
 
 如果某些信息在报告中没有明确提及，请使用合理的默认值。""",
             ),

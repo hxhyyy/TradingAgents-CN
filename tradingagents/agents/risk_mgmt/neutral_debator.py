@@ -3,6 +3,11 @@ import json
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+from tradingagents.agents.utils.perspective_utils import (
+    build_perspective_debate_guidance,
+    build_risk_debate_role_hint,
+    get_perspective_label,
+)
 logger = get_logger("default")
 
 
@@ -40,7 +45,13 @@ def create_neutral_debator(llm):
                               len(current_risky_response) + len(current_safe_response))
         logger.info(f"  - 🚨 总Prompt长度: {total_prompt_length:,} 字符 (~{total_prompt_length//4:,} tokens)")
 
-        prompt = f"""作为中性风险分析师，您的角色是提供平衡的视角，权衡交易员决策或计划的潜在收益和风险。您优先考虑全面的方法，评估上行和下行风险，同时考虑更广泛的市场趋势、潜在的经济变化和多元化策略。以下是交易员的决策：
+        prompt = f"""作为中性风险分析师，您的角色是提供平衡的视角，权衡交易员决策或计划的潜在收益和风险。您优先考虑全面的方法，评估上行和下行风险，同时考虑更广泛的市场趋势、潜在的经济变化和多元化策略。
+
+**本轮风险辩论服务于：{get_perspective_label()}**
+{build_risk_debate_role_hint("neutral")}
+{build_perspective_debate_guidance()}
+
+以下是交易员的决策：
 
 {trader_decision}
 

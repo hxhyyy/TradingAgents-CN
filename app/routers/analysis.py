@@ -200,6 +200,7 @@ async def get_task_status_new(
                     "stock_symbol": mongo_result.get("stock_symbol"),
                     "analysts": mongo_result.get("analysts", []),
                     "research_depth": mongo_result.get("research_depth", "快速"),
+                    "analysis_perspective": mongo_result.get("analysis_perspective", "value"),
                     "source": "mongodb_reports"  # 标记数据来源
                 }
 
@@ -286,6 +287,7 @@ async def get_task_result(
                     "tokens_used": mongo_result.get("tokens_used", 0),
                     "analysts": mongo_result.get("analysts", []),
                     "research_depth": mongo_result.get("research_depth", "快速"),
+                    "analysis_perspective": mongo_result.get("analysis_perspective", "value"),
                     "reports": mongo_result.get("reports", {}),
                     "created_at": mongo_result.get("created_at"),
                     "updated_at": mongo_result.get("updated_at"),
@@ -328,6 +330,7 @@ async def get_task_result(
                         "tokens_used": r.get("tokens_used", 0),
                         "analysts": r.get("analysts", []),
                         "research_depth": r.get("research_depth", "快速"),
+                        "analysis_perspective": r.get("analysis_perspective", "value"),
                         "reports": r.get("reports", {}),
                         "state": r.get("state", {}),
                         "detailed_analysis": r.get("detailed_analysis", {}),
@@ -656,6 +659,7 @@ async def get_task_result(
             "tokens_used": safe_number(result_data.get("tokens_used"), 0),
             "analysts": safe_list(result_data.get("analysts")),
             "research_depth": safe_string(result_data.get("research_depth"), "快速"),
+            "analysis_perspective": safe_string(result_data.get("analysis_perspective"), "value"),
             "detailed_analysis": safe_dict(result_data.get("detailed_analysis")),
             "state": safe_dict(result_data.get("state")),
             # 🔥 关键修复：添加decision字段！

@@ -27,6 +27,7 @@ export interface SingleAnalysisRequest {
     market_type?: string
     analysis_date?: string
     research_depth?: string
+    analysis_perspective?: 'value' | 'trend'
     selected_analysts?: string[]
     custom_prompt?: string
     include_sentiment?: boolean

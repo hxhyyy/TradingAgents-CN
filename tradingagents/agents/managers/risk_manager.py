@@ -4,6 +4,14 @@ import json
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
 from tradingagents.agents.utils.instrument_utils import build_instrument_context
+from tradingagents.agents.utils.perspective_utils import (
+    build_perspective_banner,
+    build_perspective_guidance,
+    build_perspective_output_schema,
+    get_analysis_perspective,
+    get_perspective_label,
+)
+from tradingagents.agents.utils.facts_card import build_facts_card_from_state, build_facts_card_text
 logger = get_logger("default")
 
 
@@ -35,9 +43,17 @@ def create_risk_manager(llm, memory):
         for i, rec in enumerate(past_memories, 1):
             past_memory_str += rec["recommendation"] + "\n\n"
 
+        # ✅ 统一 facts 底稿（治本：跨节点口径一致）
+        facts_card = build_facts_card_from_state(state)
+        facts_text = build_facts_card_text(facts_card)
+
         prompt = f"""作为风险管理委员会主席，综合三位风险分析师（激进、中性、保守）的辩论，形成最终交易决策。
 
+{build_perspective_banner()}
+
 {instrument_context}
+
+{facts_text}
 
 ---
 
@@ -50,19 +66,19 @@ def create_risk_manager(llm, memory):
 
 当辩论中最强论据支持某一方向时，应明确表态；仅当多空证据确实势均力敌时，才选择「持有」。
 
+{build_perspective_guidance()}
+
 ---
 
 **决策指导原则**：
-1. **总结关键论点**：提取每位分析师的最强观点，重点关注与当前市场背景的相关性。
-2. **综合上下文**：研究经理投资计划：**{research_plan}**；交易员交易提案：**{trader_plan}**。在此基础上结合风险辩论进行调整。
+1. **总结关键论点**：提取每位分析师的最强观点，重点关注与当前**{get_perspective_label()}**视角的相关性。
+2. **综合上下文**：研究经理投资计划：**{research_plan}**；交易员交易提案：**{trader_plan}**。须在同一视角下协调二者，若交易员与视角宪法冲突，以视角宪法与研究经理计划为准并说明理由。
 3. **从过去的错误中学习**：使用以下经验教训改进判断，避免重复失误：
 {past_memory_str if past_memory_str.strip() else "（暂无历史记忆）"}
 4. **依据证据裁决**：每个结论须有辩论中的具体证据支撑，避免无依据的极端判断。
+5. **视角一致性**：最终结论、执行摘要、投资论点必须全部符合**{get_perspective_label()}**框架，不得混用另一套投资哲学的话术。
 
-**必须输出的结构**：
-1. **评级**：上述五档之一
-2. **执行摘要**：简洁可操作的行动方案（入场策略、仓位建议、关键风控位、时间维度）
-3. **投资论点**：详细推理，引用辩论中的关键论点与反驳
+{build_perspective_output_schema()}
 
 ---
 
@@ -144,19 +160,36 @@ def create_risk_manager(llm, memory):
         # 如果所有重试都失败，生成默认决策
         if not response_content:
             logger.error(f"❌ [Risk Manager] 所有LLM调用尝试失败，使用默认决策")
-            response_content = f"""**默认建议：持有**
+            _perspective = get_analysis_perspective()
+            _label = get_perspective_label(_perspective)
+            if _perspective == "value":
+                response_content = f"""**默认建议：持有**
 
-由于技术原因无法生成详细分析，基于当前市场状况和风险控制原则，建议对{company_name}采取持有策略。
+由于技术原因无法生成详细分析，基于**{_label}**视角与风险控制原则，建议对{company_name}采取持有策略，等待更多基本面信息明朗。
 
 **理由：**
-1. 市场信息不足，避免盲目操作
-2. 保持现有仓位，等待更明确的市场信号
-3. 控制风险，避免在不确定性高的情况下做出激进决策
+1. 在价值分析框架下，信息不足时不应因短期波动盲目减持
+2. 维持现有仓位，持续跟踪估值与基本面变化
+3. 若出现基本面永久性恶化信号，再考虑减持
 
 **建议：**
-- 密切关注市场动态和公司基本面变化
-- 设置合理的止损和止盈位
-- 等待更好的入场或出场时机
+- 关注财报、行业景气与估值水平变化
+- 设定基于基本面的减仓条件，而非纯技术止损
+
+注意：此为系统默认建议，建议结合人工分析做出最终决策。"""
+            else:
+                response_content = f"""**默认建议：持有**
+
+由于技术原因无法生成详细分析，基于**{_label}**视角与风险控制原则，建议对{company_name}采取观望/持有策略。
+
+**理由：**
+1. 趋势方向尚不明确，不宜盲目建仓或追涨
+2. 等待价格与量能给出更清晰的方向信号
+3. 控制回撤，避免在不确定性高时重仓
+
+**建议：**
+- 关注关键均线与支撑阻力位的突破/跌破
+- 设定明确止损后再考虑建仓
 
 注意：此为系统默认建议，建议结合人工分析做出最终决策。"""
 

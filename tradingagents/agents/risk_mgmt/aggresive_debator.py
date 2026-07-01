@@ -3,6 +3,11 @@ import json
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+from tradingagents.agents.utils.perspective_utils import (
+    build_perspective_debate_guidance,
+    build_risk_debate_role_hint,
+    get_perspective_label,
+)
 logger = get_logger("default")
 
 
@@ -36,7 +41,13 @@ def create_risky_debator(llm):
                        len(current_safe_response) + len(current_neutral_response))
         logger.info(f"  - 总Prompt长度: {total_length:,} 字符 (~{total_length//4:,} tokens)")
 
-        prompt = f"""作为激进风险分析师，您的职责是积极倡导高回报、高风险的投资机会，强调大胆策略和竞争优势。在评估交易员的决策或计划时，请重点关注潜在的上涨空间、增长潜力和创新收益——即使这些伴随着较高的风险。使用提供的市场数据和情绪分析来加强您的论点，并挑战对立观点。具体来说，请直接回应保守和中性分析师提出的每个观点，用数据驱动的反驳和有说服力的推理进行反击。突出他们的谨慎态度可能错过的关键机会，或者他们的假设可能过于保守的地方。以下是交易员的决策：
+        prompt = f"""作为激进风险分析师，您的职责是积极倡导高回报、高风险的投资机会，强调大胆策略和竞争优势。在评估交易员的决策或计划时，请重点关注潜在的上涨空间、增长潜力和创新收益——即使这些伴随着较高的风险。
+
+**本轮风险辩论服务于：{get_perspective_label()}**
+{build_risk_debate_role_hint("risky")}
+{build_perspective_debate_guidance()}
+
+使用提供的市场数据和情绪分析来加强您的论点，并挑战对立观点。具体来说，请直接回应保守和中性分析师提出的每个观点，用数据驱动的反驳和有说服力的推理进行反击。以下是交易员的决策：
 
 {trader_decision}
 

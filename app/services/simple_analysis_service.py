@@ -385,7 +385,8 @@ def create_analysis_config(
     llm_provider: str,
     market_type: str = "A股",
     quick_model_config: dict = None,  # 新增：快速模型的完整配置
-    deep_model_config: dict = None    # 新增：深度模型的完整配置
+    deep_model_config: dict = None,    # 新增：深度模型的完整配置
+    analysis_perspective: str = "value",
 ) -> dict:
     """
     创建分析配置 - 支持数字等级和中文等级
@@ -399,12 +400,17 @@ def create_analysis_config(
         market_type: 市场类型
         quick_model_config: 快速模型的完整配置（包含 max_tokens、temperature、timeout 等）
         deep_model_config: 深度模型的完整配置（包含 max_tokens、temperature、timeout 等）
+        analysis_perspective: 分析视角 value=价值分析, trend=趋势分析
 
     Returns:
         dict: 完整的分析配置
     """
     # 🔍 [调试] 记录接收到的原始参数
     logger.info(f"🔍 [配置创建] 接收到的research_depth参数: {research_depth} (类型: {type(research_depth).__name__})")
+
+    from tradingagents.agents.utils.perspective_utils import normalize_analysis_perspective
+    normalized_perspective = normalize_analysis_perspective(analysis_perspective)
+    logger.info(f"🎯 [配置创建] 分析视角: {normalized_perspective}")
 
     # 数字等级到中文等级的映射
     numeric_to_chinese = {
@@ -540,6 +546,7 @@ def create_analysis_config(
 
     # 🔧 添加research_depth到配置中，使工具函数能够访问分析级别信息
     config["research_depth"] = research_depth
+    config["analysis_perspective"] = normalized_perspective
 
     # 🔧 添加模型配置参数（max_tokens、temperature、timeout、retry_times）
     if quick_model_config:
@@ -558,6 +565,7 @@ def create_analysis_config(
 
     logger.info(f"📋 ========== 创建分析配置完成 ==========")
     logger.info(f"   🎯 研究深度: {research_depth}")
+    logger.info(f"   📐 分析视角: {normalized_perspective}")
     logger.info(f"   🔥 辩论轮次: {config['max_debate_rounds']}")
     logger.info(f"   ⚖️ 风险讨论轮次: {config['max_risk_discuss_rounds']}")
     logger.info(f"   💾 记忆功能: {config['memory_enabled']}")
@@ -1256,6 +1264,11 @@ class SimpleAnalysisService:
                 market_type=market_type,  # 使用前端传递的市场类型
                 quick_model_config=quick_model_config,
                 deep_model_config=deep_model_config,
+                analysis_perspective=(
+                    request.parameters.analysis_perspective
+                    if request.parameters and getattr(request.parameters, "analysis_perspective", None)
+                    else "value"
+                ),
             )
 
             # 🔧 添加混合模式配置
@@ -1821,6 +1834,11 @@ class SimpleAnalysisService:
                 # 添加分析师信息
                 "analysts": request.parameters.selected_analysts if request.parameters else [],
                 "research_depth": request.parameters.research_depth if request.parameters else "快速",
+                "analysis_perspective": (
+                    request.parameters.analysis_perspective
+                    if request.parameters and getattr(request.parameters, "analysis_perspective", None)
+                    else config.get("analysis_perspective", "value")
+                ),
                 # 添加提取的报告内容
                 "reports": reports,
                 # 🔥 关键修复：添加格式化后的decision字段！
@@ -2632,6 +2650,7 @@ class SimpleAnalysisService:
                 "summary": result.get("summary", ""),
                 "analysts": result.get("analysts", []),
                 "research_depth": result.get("research_depth", 1),
+                "analysis_perspective": result.get("analysis_perspective", "value"),
 
                 # 报告内容
                 "reports": reports,
@@ -2904,6 +2923,7 @@ class SimpleAnalysisService:
                 'analysis_date': analysis_date_str,
                 'timestamp': datetime.now().isoformat(),
                 'research_depth': result.get('research_depth', 1),
+                'analysis_perspective': result.get('analysis_perspective', 'value'),
                 'analysts': result.get('analysts', []),
                 'status': 'completed',
                 'reports_count': len(saved_files),

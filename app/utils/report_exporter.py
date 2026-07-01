@@ -82,6 +82,9 @@ class ReportExporter:
         analysis_date = report_doc.get("analysis_date", "")
         analysts = report_doc.get("analysts", [])
         research_depth = report_doc.get("research_depth", 1)
+        analysis_perspective = report_doc.get("analysis_perspective", "value")
+        from tradingagents.agents.utils.perspective_utils import get_perspective_label, normalize_analysis_perspective
+        perspective_label = get_perspective_label(normalize_analysis_perspective(analysis_perspective))
         reports = report_doc.get("reports", {})
         summary = report_doc.get("summary", "")
         
@@ -94,6 +97,7 @@ class ReportExporter:
         if analysts:
             content_parts.append(f"**分析师**: {', '.join(analysts)}")
         content_parts.append(f"**研究深度**: {research_depth}")
+        content_parts.append(f"**分析视角**: {perspective_label}")
         content_parts.append("")
         content_parts.append("---")
         content_parts.append("")

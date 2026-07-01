@@ -4,6 +4,13 @@ import json
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
 from tradingagents.agents.utils.instrument_utils import build_instrument_context
+from tradingagents.agents.utils.perspective_utils import (
+    build_perspective_banner,
+    build_perspective_debate_guidance,
+    build_perspective_guidance,
+    get_perspective_label,
+)
+from tradingagents.agents.utils.facts_card import build_facts_card_from_state, build_facts_card_text
 logger = get_logger("default")
 
 
@@ -32,9 +39,17 @@ def create_research_manager(llm, memory):
         for i, rec in enumerate(past_memories, 1):
             past_memory_str += rec["recommendation"] + "\n\n"
 
+        # ✅ 统一 facts 底稿（治本：跨节点口径一致）
+        facts_card = build_facts_card_from_state(state)
+        facts_text = build_facts_card_text(facts_card)
+
         prompt = f"""作为研究经理和辩论主持人，批判性地评估本轮多空辩论，为交易员制定清晰、可执行的投资计划。
 
+{build_perspective_banner()}
+
 {instrument_context}
+
+{facts_text}
 
 ---
 
@@ -47,20 +62,24 @@ def create_research_manager(llm, memory):
 
 当辩论中最强论据支持某一方向时，应明确表态；仅当多空证据确实势均力敌时，才选择「持有」。
 
+{build_perspective_guidance()}
+
+{build_perspective_debate_guidance()}
+
 简洁地总结双方的关键观点，重点关注最有说服力的证据或推理。
 
-此外，为交易员制定详细的投资计划。这应该包括：
+此外，为交易员制定详细的投资计划（须符合**{get_perspective_label()}**视角）。这应该包括：
 
 您的建议：基于最有说服力论点的明确立场（使用上述五档评级之一）。
 理由：解释为什么这些论点导致您的结论。
-战略行动：实施建议的具体步骤。
-📊 目标价格分析：基于所有可用报告（基本面、新闻、情绪），提供全面的目标价格区间和具体价格目标。考虑：
-- 基本面报告中的基本估值
-- 新闻对价格预期的影响
-- 情绪驱动的价格调整
-- 技术支撑/阻力位
+战略行动：实施建议的具体步骤（价值视角侧重估值与持有周期；趋势视角侧重入场/止损/目标位）。
+📊 目标价格分析：基于所有可用报告，提供与当前分析视角一致的目标价格分析。考虑：
+- 基本面报告中的估值（价值视角下为主依据）
+- 新闻对长期逻辑或短期催化剂的影响
+- 情绪数据（仅作辅助）
+- 技术支撑/阻力位（趋势视角下为主依据）
 - 风险调整价格情景（保守、基准、乐观）
-- 价格目标的时间范围（1个月、3个月、6个月）
+- 价格目标的时间范围（价值：6–24个月；趋势：1周–3个月）
 💰 您必须提供具体的目标价格 - 不要回复"无法确定"或"需要更多信息"。
 
 考虑您在类似情况下的过去错误。利用这些见解来完善您的决策制定，确保您在学习和改进。以对话方式呈现您的分析，就像自然说话一样，不使用特殊格式。

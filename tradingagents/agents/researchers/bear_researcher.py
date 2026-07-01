@@ -4,6 +4,10 @@ import json
 
 # 导入统一日志系统
 from tradingagents.utils.logging_init import get_logger
+from tradingagents.agents.utils.perspective_utils import (
+    build_perspective_debate_guidance,
+    get_perspective_label,
+)
 logger = get_logger("default")
 
 
@@ -87,6 +91,9 @@ def create_bear_researcher(llm, memory):
             past_memory_str += rec["recommendation"] + "\n\n"
 
         prompt = f"""你是一位看跌分析师，负责论证不投资股票 {company_name}（股票代码：{ticker}）的理由。
+
+**本轮辩论服务于：{get_perspective_label()}**
+{build_perspective_debate_guidance()}
 
 ⚠️ 重要提醒：当前分析的是 {market_info['market_name']}，所有价格和估值请使用 {currency}（{currency_symbol}）作为单位。
 ⚠️ 在你的分析中，请始终使用公司名称"{company_name}"而不是股票代码"{ticker}"来称呼这家公司。

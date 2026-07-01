@@ -122,6 +122,32 @@
                 </div>
               </div>
 
+              <!-- 分析视角 -->
+              <div class="form-section">
+                <h4 class="section-title">📐 分析视角</h4>
+                <p class="section-hint">与下方分析师勾选独立：仅决定最终结论按价值还是趋势框架综合（不改变收集哪些报告）。</p>
+                <div class="perspective-selector">
+                  <div
+                    v-for="option in perspectiveOptions"
+                    :key="option.id"
+                    class="perspective-option"
+                    :class="{ active: analysisForm.analysisPerspective === option.id }"
+                    @click="analysisForm.analysisPerspective = option.id"
+                  >
+                    <div class="perspective-icon">{{ option.icon }}</div>
+                    <div class="perspective-info">
+                      <div class="perspective-name">{{ option.name }}</div>
+                      <div class="perspective-desc">{{ option.description }}</div>
+                    </div>
+                    <div class="perspective-check">
+                      <el-icon v-if="analysisForm.analysisPerspective === option.id" class="check-icon">
+                        <Check />
+                      </el-icon>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- 分析师团队 -->
               <div class="form-section">
                 <h4 class="section-title">👥 分析师团队</h4>
@@ -500,6 +526,12 @@
                   <div class="result-meta">
                     <el-tag type="success">{{ analysisResults.symbol || analysisResults.stock_symbol || analysisForm.symbol || analysisForm.stockCode }}</el-tag>
                     <el-tag>{{ analysisResults.analysis_date }}</el-tag>
+                    <el-tag
+                      v-if="analysisResults.analysis_perspective"
+                      :type="analysisResults.analysis_perspective === 'trend' ? 'warning' : 'primary'"
+                    >
+                      {{ analysisResults.analysis_perspective === 'trend' ? '趋势分析' : '价值分析' }}
+                    </el-tag>
                     <el-tag v-if="analysisResults.model_info && analysisResults.model_info !== 'Unknown'" type="info">
                       <el-icon><Cpu /></el-icon>
                       {{ analysisResults.model_info }}
@@ -746,6 +778,7 @@ interface AnalysisForm {
   market: MarketType
   analysisDate: Date
   researchDepth: number
+  analysisPerspective: 'value' | 'trend'
   selectedAnalysts: string[]
   includeSentiment: boolean
   includeRisk: boolean
@@ -818,6 +851,7 @@ const analysisForm = reactive<AnalysisForm>({
   market: 'A股',
   analysisDate: new Date(),
   researchDepth: 3, // 默认选中3级标准分析（推荐），将在 onMounted 中从用户偏好加载
+  analysisPerspective: 'value',
   selectedAnalysts: ['市场分析师', '基本面分析师'], // 将在 onMounted 中从用户偏好加载
   includeSentiment: true,
   includeRisk: true,
@@ -835,6 +869,21 @@ const depthOptions = [
   { icon: '🎯', name: '3级 - 标准分析', description: '技术+基本面，推荐', time: '4-8分钟' },
   { icon: '🔍', name: '4级 - 深度分析', description: '多轮辩论，深度研究', time: '6-11分钟' },
   { icon: '🏆', name: '5级 - 全面分析', description: '最全面的分析报告', time: '8-16分钟' }
+]
+
+const perspectiveOptions = [
+  {
+    id: 'value' as const,
+    icon: '💎',
+    name: '价值分析',
+    description: '以估值、基本面与长期逻辑综合结论'
+  },
+  {
+    id: 'trend' as const,
+    icon: '📉',
+    name: '趋势分析',
+    description: '以技术面、量价与交易纪律综合结论'
+  }
 ]
 
 // 禁用日期
@@ -965,6 +1014,7 @@ const submitAnalysis = async () => {
         market_type: analysisForm.market,
         analysis_date: analysisDate.toISOString().split('T')[0],
         research_depth: getDepthDescription(analysisForm.researchDepth),
+        analysis_perspective: analysisForm.analysisPerspective,
         selected_analysts: convertAnalystNamesToIds(analysisForm.selectedAnalysts),
         include_sentiment: analysisForm.includeSentiment,
         include_risk: analysisForm.includeRisk,
@@ -2357,6 +2407,13 @@ onMounted(async () => {
           padding-bottom: 8px;
           border-bottom: 2px solid #e2e8f0;
         }
+
+        .section-hint {
+          font-size: 12px;
+          color: #64748b;
+          margin: -8px 0 12px 0;
+          line-height: 1.5;
+        }
       }
 
       .stock-input {
@@ -2447,6 +2504,62 @@ onMounted(async () => {
               font-size: 11px;
               opacity: 0.7;
             }
+          }
+        }
+      }
+
+      .perspective-selector {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+
+        @media (max-width: 640px) {
+          grid-template-columns: 1fr;
+        }
+
+        .perspective-option {
+          display: flex;
+          align-items: center;
+          padding: 16px;
+          border: 2px solid #e2e8f0;
+          border-radius: 12px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+
+          &:hover {
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+          }
+
+          &.active {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: #1e40af;
+          }
+
+          .perspective-icon {
+            font-size: 24px;
+            margin-right: 12px;
+          }
+
+          .perspective-info {
+            flex: 1;
+
+            .perspective-name {
+              font-weight: 600;
+              margin-bottom: 4px;
+            }
+
+            .perspective-desc {
+              font-size: 12px;
+              opacity: 0.8;
+            }
+          }
+
+          .perspective-check .check-icon {
+            color: #3b82f6;
+            font-size: 18px;
           }
         }
       }
