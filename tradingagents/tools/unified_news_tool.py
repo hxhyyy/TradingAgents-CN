@@ -43,7 +43,9 @@ class UnifiedNewsAnalyzer:
         logger.info(f"[统一新闻工具] 股票类型: {stock_type}")
         
         # 根据股票类型调用相应的获取方法
-        if stock_type == "A股":
+        if stock_type == "加密货币":
+            result = self._get_crypto_news(stock_code, max_news, model_info)
+        elif stock_type == "A股":
             result = self._get_a_share_news(stock_code, max_news, model_info)
         elif stock_type == "港股":
             result = self._get_hk_share_news(stock_code, max_news, model_info)
@@ -61,12 +63,68 @@ class UnifiedNewsAnalyzer:
         if not result or len(result.strip()) < 50:
             logger.warning(f"[统一新闻工具] ⚠️ 返回结果异常短或为空！")
             logger.warning(f"[统一新闻工具] 📝 完整结果内容: '{result}'")
+
+        result = self._supplement_with_tavily(result, stock_code, stock_type)
         
         return result
+
+    def _supplement_with_tavily(self, news_text: str, stock_code: str, stock_type: str) -> str:
+        """Append Tavily web search when configured (US/crypto always; others if thin)."""
+        try:
+            from tradingagents.dataflows.news.tavily_search import (
+                maybe_append_tavily_section,
+                search_stock_news,
+                should_use_tavily,
+            )
+            from tradingagents.utils.stock_utils import StockUtils
+
+            market_hint = stock_type
+            if hasattr(self.toolkit, "_config"):
+                config_hint = self.toolkit._config.get("market_type")
+                if config_hint:
+                    market_hint = config_hint
+
+            try:
+                from tradingagents.dataflows.providers.crypto.binance import is_supported_crypto
+
+                if is_supported_crypto(stock_code):
+                    market_hint = "加密货币"
+            except Exception:
+                pass
+
+            market_info = StockUtils.get_analysis_market_info(stock_code, market_hint)
+            sections = [news_text] if news_text else []
+            if not should_use_tavily(sections, market_info):
+                return news_text
+
+            tavily_block = search_stock_news(stock_code, market_info)
+            if not tavily_block:
+                return news_text
+
+            if not news_text or news_text.strip().startswith("❌"):
+                logger.info(f"[统一新闻工具] ✅ Tavily 作为唯一新闻源: {len(tavily_block)} 字符")
+                return tavily_block
+
+            supplemented = f"{news_text.rstrip()}\n\n---\n\n{tavily_block}"
+            logger.info(
+                f"[统一新闻工具] ✅ Tavily 补充完成: {len(news_text)} -> {len(supplemented)} 字符"
+            )
+            return supplemented
+        except Exception as exc:
+            logger.warning(f"[统一新闻工具] Tavily 补充跳过: {exc}")
+            return news_text
     
     def _identify_stock_type(self, stock_code: str) -> str:
         """识别股票类型"""
         stock_code = stock_code.upper().strip()
+
+        try:
+            from tradingagents.dataflows.providers.crypto.binance import is_supported_crypto
+
+            if is_supported_crypto(stock_code):
+                return "加密货币"
+        except Exception:
+            pass
         
         # A股判断
         if re.match(r'^(00|30|60|68)\d{4}$', stock_code):
@@ -409,6 +467,19 @@ class UnifiedNewsAnalyzer:
             logger.warning(f"[统一新闻工具] 实时港股新闻获取失败: {e}")
         
         return "❌ 无法获取港股新闻数据，所有新闻源均不可用"
+
+    def _get_crypto_news(self, stock_code: str, max_news: int, model_info: str = "") -> str:
+        """获取加密货币新闻（Finnhub；Tavily 在 supplement 阶段补充）。"""
+        import tradingagents.dataflows.interface as interface
+
+        curr_date = datetime.now().strftime("%Y-%m-%d")
+        try:
+            finnhub_news = interface.get_finnhub_news("BINANCE:BTCUSDT", curr_date, 7)
+            body = f"## 比特币相关新闻 (Finnhub)\n{finnhub_news}"
+            return self._format_news_result(body, "Finnhub", model_info)
+        except Exception as exc:
+            logger.warning(f"[统一新闻工具] 加密货币 Finnhub 新闻失败: {exc}")
+            return "❌ 无法获取加密货币新闻数据，所有新闻源均不可用"
     
     def _get_us_share_news(self, stock_code: str, max_news: int, model_info: str = "") -> str:
         """获取美股新闻：Yahoo + Alpha Vantage 合并（免费双源），失败再降级。"""

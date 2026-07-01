@@ -1343,6 +1343,10 @@ class Toolkit:
                     except Exception as e:
                         result_data.append(f"## Finnhub 缓存新闻\n获取失败: {e}")
 
+            from tradingagents.dataflows.news.tavily_search import maybe_append_tavily_section
+
+            result_data = maybe_append_tavily_section(result_data, ticker, market_info)
+
             # 组合所有数据
             combined_result = f"""# {ticker} 新闻分析
 

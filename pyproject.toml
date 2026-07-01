@@ -44,6 +44,7 @@ dependencies = [
     "tushare>=1.4.21",
     "yfinance>=0.2.63",
     "stockstats>=0.6.5",
+    "tavily-python>=0.5.0",
 
     # AI和LLM
     "chainlit>=2.5.5",
