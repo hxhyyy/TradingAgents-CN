@@ -71,7 +71,7 @@ class SignalProcessor:
 请从提供的分析报告中提取以下信息，并以JSON格式返回：
 
 {{
-    "action": "买入/持有/卖出",
+    "action": "买入/持有/卖出（若原文为增持/减持/观望，分别映射为买入/卖出/持有）",
     "target_price": 数字({currency}价格，**必须提供具体数值，不能为null**),
     "confidence": 数字(0-1之间，如果没有明确提及则为0.7),
     "risk_score": 数字(0-1之间，如果没有明确提及则为0.5),
@@ -79,7 +79,7 @@ class SignalProcessor:
 }}
 
 请确保：
-1. action字段必须是"买入"、"持有"或"卖出"之一（绝对不允许使用英文buy/hold/sell）
+1. action字段必须是"买入"、"持有"或"卖出"之一（增持→买入，减持→卖出，观望→持有；绝对不允许使用英文buy/hold/sell）
 2. target_price必须是具体的数字,target_price应该是合理的{currency}价格数字（使用{currency_symbol}符号）
 3. confidence和risk_score应该在0-1之间
 4. reasoning应该是简洁的中文摘要
@@ -130,7 +130,10 @@ class SignalProcessor:
                         'buy': '买入', 'hold': '持有', 'sell': '卖出',
                         'BUY': '买入', 'HOLD': '持有', 'SELL': '卖出',
                         '购买': '买入', '保持': '持有', '出售': '卖出',
-                        'purchase': '买入', 'keep': '持有', 'dispose': '卖出'
+                        'purchase': '买入', 'keep': '持有', 'dispose': '卖出',
+                        '增持': '买入', '减持': '卖出', '观望': '持有',
+                        'Overweight': '买入', 'Underweight': '卖出',
+                        'overweight': '买入', 'underweight': '卖出',
                     }
                     action = action_map.get(action, '持有')
                     if action != decision_data.get('action', '持有'):
@@ -284,11 +287,11 @@ class SignalProcessor:
 
         # 提取动作
         action = '持有'  # 默认
-        if re.search(r'买入|BUY', text, re.IGNORECASE):
+        if re.search(r'买入|增持|BUY|Overweight', text, re.IGNORECASE):
             action = '买入'
-        elif re.search(r'卖出|SELL', text, re.IGNORECASE):
+        elif re.search(r'卖出|减持|SELL|Underweight', text, re.IGNORECASE):
             action = '卖出'
-        elif re.search(r'持有|HOLD', text, re.IGNORECASE):
+        elif re.search(r'持有|观望|HOLD', text, re.IGNORECASE):
             action = '持有'
 
         # 尝试提取目标价格（使用增强的模式）

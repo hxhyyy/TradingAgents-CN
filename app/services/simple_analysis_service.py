@@ -1702,7 +1702,14 @@ class SimpleAnalysisService:
                         'HOLD': '持有',
                         'buy': '买入',
                         'sell': '卖出',
-                        'hold': '持有'
+                        'hold': '持有',
+                        'Overweight': '增持',
+                        'Underweight': '减持',
+                        'overweight': '增持',
+                        'underweight': '减持',
+                        '增持': '增持',
+                        '减持': '减持',
+                        '观望': '观望',
                     }
                     action = decision.get('action', '持有')
                     chinese_action = action_translation.get(action, action)
