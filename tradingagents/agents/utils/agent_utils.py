@@ -1248,67 +1248,47 @@ class Toolkit:
                     result_data.append(f"## 比特币相关新闻\n获取失败: {e}")
 
             elif is_china or is_hk:
-                # 中国A股和港股：使用AKShare东方财富新闻和Google新闻（中文搜索）
                 logger.info(f"🇨🇳🇭🇰 [统一新闻工具] 处理中文新闻...")
 
-                # 1. 尝试获取AKShare东方财富新闻
-                try:
-                    # 处理股票代码
+                if is_china:
+                    from tradingagents.dataflows.news.china_stock_news import fetch_a_share_news_sections
+
                     clean_ticker = ticker.replace('.SH', '').replace('.SZ', '').replace('.SS', '')\
-                                   .replace('.HK', '').replace('.XSHE', '').replace('.XSHG', '')
-                    
-                    logger.info(f"🇨🇳🇭🇰 [统一新闻工具] 尝试获取东方财富新闻: {clean_ticker}")
+                                   .replace('.XSHE', '').replace('.XSHG', '')
+                    sections = fetch_a_share_news_sections(
+                        clean_ticker,
+                        limit=10,
+                        include_google=True,
+                        curr_date=curr_date,
+                    )
+                    result_data.extend(sections)
+                    if sections:
+                        logger.info(f"🇨🇳 [统一新闻工具] A股新闻链返回 {len(sections)} 段")
+                else:
+                    clean_ticker = ticker.replace('.HK', '').replace('.XSHE', '').replace('.XSHG', '')
+                    try:
+                        from tradingagents.dataflows.providers.china.akshare import AKShareProvider
 
-                    # 通过 AKShare Provider 获取新闻
-                    from tradingagents.dataflows.providers.china.akshare import AKShareProvider
+                        provider = AKShareProvider()
+                        news_df = provider.get_stock_news_sync(symbol=clean_ticker)
+                        if news_df is not None and not news_df.empty:
+                            from tradingagents.dataflows.news.china_stock_news import format_news_dataframe
 
-                    provider = AKShareProvider()
+                            em_text = format_news_dataframe(news_df, "东方财富")
+                            if em_text:
+                                result_data.append(em_text)
+                    except Exception as em_e:
+                        logger.error(f"❌ [统一新闻工具] 港股东方财富新闻失败: {em_e}")
+                        result_data.append(f"## 东方财富新闻\n获取失败: {em_e}")
 
-                    # 获取东方财富新闻
-                    news_df = provider.get_stock_news_sync(symbol=clean_ticker)
-
-                    if news_df is not None and not news_df.empty:
-                        # 格式化东方财富新闻
-                        em_news_items = []
-                        for _, row in news_df.iterrows():
-                            # AKShare 返回的字段名
-                            news_title = row.get('新闻标题', '') or row.get('标题', '')
-                            news_time = row.get('发布时间', '') or row.get('时间', '')
-                            news_url = row.get('新闻链接', '') or row.get('链接', '')
-
-                            news_item = f"- **{news_title}** [{news_time}]({news_url})"
-                            em_news_items.append(news_item)
-                        
-                        # 添加到结果中
-                        if em_news_items:
-                            em_news_text = "\n".join(em_news_items)
-                            result_data.append(f"## 东方财富新闻\n{em_news_text}")
-                            logger.info(f"🇨🇳🇭🇰 [统一新闻工具] 成功获取{len(em_news_items)}条东方财富新闻")
-                except Exception as em_e:
-                    logger.error(f"❌ [统一新闻工具] 东方财富新闻获取失败: {em_e}")
-                    result_data.append(f"## 东方财富新闻\n获取失败: {em_e}")
-
-                # 2. 获取Google新闻作为补充
-                try:
-                    # 获取公司中文名称用于搜索
-                    if is_china:
-                        # A股使用股票代码搜索，添加更多中文关键词
-                        clean_ticker = ticker.replace('.SH', '').replace('.SZ', '').replace('.SS', '')\
-                                       .replace('.XSHE', '').replace('.XSHG', '')
-                        search_query = f"{clean_ticker} 股票 公司 财报 新闻"
-                        logger.info(f"🇨🇳 [统一新闻工具] A股Google新闻搜索关键词: {search_query}")
-                    else:
-                        # 港股使用代码搜索
+                    try:
+                        from tradingagents.dataflows.interface import get_google_news
                         search_query = f"{ticker} 港股"
-                        logger.info(f"🇭🇰 [统一新闻工具] 港股Google新闻搜索关键词: {search_query}")
-
-                    from tradingagents.dataflows.interface import get_google_news
-                    news_data = get_google_news(search_query, curr_date)
-                    result_data.append(f"## Google新闻\n{news_data}")
-                    logger.info(f"🇨🇳🇭🇰 [统一新闻工具] 成功获取Google新闻")
-                except Exception as google_e:
-                    logger.error(f"❌ [统一新闻工具] Google新闻获取失败: {google_e}")
-                    result_data.append(f"## Google新闻\n获取失败: {google_e}")
+                        news_data = get_google_news(search_query, curr_date)
+                        result_data.append(f"## Google新闻\n{news_data}")
+                    except Exception as google_e:
+                        logger.error(f"❌ [统一新闻工具] Google新闻获取失败: {google_e}")
+                        result_data.append(f"## Google新闻\n获取失败: {google_e}")
 
             else:
                 # 美股：Yahoo Finance 优先，与上游 TradingAgents 一致

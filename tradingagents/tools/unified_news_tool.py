@@ -93,8 +93,7 @@ class UnifiedNewsAnalyzer:
                 pass
 
             market_info = StockUtils.get_analysis_market_info(stock_code, market_hint)
-            sections = [news_text] if news_text else []
-            if not should_use_tavily(sections, market_info):
+            if "Tavily" in (news_text or "") or market_info.get("is_china"):
                 return news_text
 
             tavily_block = search_stock_news(stock_code, market_info)
@@ -376,50 +375,22 @@ class UnifiedNewsAnalyzer:
         except Exception as e:
             logger.warning(f"[统一新闻工具] 数据库新闻获取失败: {e}")
 
-        # 优先级1: 东方财富实时新闻
+        # 优先级1-4: 东方财富直连 -> Tavily -> AKShare -> Google
         try:
-            if hasattr(self.toolkit, 'get_realtime_stock_news'):
-                logger.info(f"[统一新闻工具] 尝试东方财富实时新闻...")
-                # 使用LangChain工具的正确调用方式：.invoke()方法和字典参数
-                result = self.toolkit.get_realtime_stock_news.invoke({"ticker": stock_code, "curr_date": curr_date})
-                
-                # 🔍 详细记录东方财富返回的内容
-                logger.info(f"[统一新闻工具] 📊 东方财富返回内容长度: {len(result) if result else 0} 字符")
-                logger.info(f"[统一新闻工具] 📋 东方财富返回内容预览 (前500字符): {result[:500] if result else 'None'}")
-                
-                if result and len(result.strip()) > 100:
-                    logger.info(f"[统一新闻工具] ✅ 东方财富新闻获取成功: {len(result)} 字符")
-                    return self._format_news_result(result, "东方财富实时新闻", model_info)
-                else:
-                    logger.warning(f"[统一新闻工具] ⚠️ 东方财富新闻内容过短或为空")
+            from tradingagents.dataflows.news.china_stock_news import fetch_a_share_news_markdown
+
+            live_news = fetch_a_share_news_markdown(
+                stock_code,
+                limit=max_news,
+                include_google=True,
+                curr_date=curr_date,
+            )
+            if live_news and len(live_news.strip()) > 50:
+                logger.info(f"[统一新闻工具] ✅ A股实时新闻链成功: {len(live_news)} 字符")
+                return self._format_news_result(live_news, "东方财富/Tavily", model_info)
         except Exception as e:
-            logger.warning(f"[统一新闻工具] 东方财富新闻获取失败: {e}")
-        
-        # 优先级2: Google新闻（中文搜索）
-        try:
-            if hasattr(self.toolkit, 'get_google_news'):
-                logger.info(f"[统一新闻工具] 尝试Google新闻...")
-                query = f"{stock_code} 股票 新闻 财报 业绩"
-                # 使用LangChain工具的正确调用方式：.invoke()方法和字典参数
-                result = self.toolkit.get_google_news.invoke({"query": query, "curr_date": curr_date})
-                if result and len(result.strip()) > 50:
-                    logger.info(f"[统一新闻工具] ✅ Google新闻获取成功: {len(result)} 字符")
-                    return self._format_news_result(result, "Google新闻", model_info)
-        except Exception as e:
-            logger.warning(f"[统一新闻工具] Google新闻获取失败: {e}")
-        
-        # 优先级3: OpenAI全球新闻
-        try:
-            if hasattr(self.toolkit, 'get_global_news_openai'):
-                logger.info(f"[统一新闻工具] 尝试OpenAI全球新闻...")
-                # 使用LangChain工具的正确调用方式：.invoke()方法和字典参数
-                result = self.toolkit.get_global_news_openai.invoke({"curr_date": curr_date})
-                if result and len(result.strip()) > 50:
-                    logger.info(f"[统一新闻工具] ✅ OpenAI新闻获取成功: {len(result)} 字符")
-                    return self._format_news_result(result, "OpenAI全球新闻", model_info)
-        except Exception as e:
-            logger.warning(f"[统一新闻工具] OpenAI新闻获取失败: {e}")
-        
+            logger.warning(f"[统一新闻工具] A股实时新闻链失败: {e}")
+
         return "❌ 无法获取A股新闻数据，所有新闻源均不可用"
     
     def _get_hk_share_news(self, stock_code: str, max_news: int, model_info: str = "") -> str:
@@ -665,7 +636,7 @@ def create_unified_news_tool(toolkit):
 功能:
 - 自动识别股票类型（A股/港股/美股）
 - 根据股票类型选择最佳新闻源
-- A股: 优先东方财富 -> Google中文 -> OpenAI
+- A股: 东方财富直连 -> Tavily -> AKShare(最后) -> Google
 - 港股: 优先Google -> OpenAI -> 实时新闻
 - 美股: Yahoo Finance + Alpha Vantage 双源合并 -> Google 降级
 - 返回格式化的新闻内容

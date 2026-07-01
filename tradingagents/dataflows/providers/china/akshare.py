@@ -264,6 +264,86 @@ class AKShareProvider(BaseStockDataProvider):
             self.logger.error(f"❌ {symbol} 直接调用 API 失败: {e}")
             return None
 
+    def _fetch_stock_news_dataframe(self, symbol: str, limit: int = 10) -> tuple[Optional["pd.DataFrame"], str]:
+        """
+        获取个股新闻 DataFrame：东方财富直连优先，AKShare 备用。
+
+        Returns:
+            (DataFrame|None, data_source_tag)
+        """
+        import akshare as ak
+        import json
+        import time
+
+        symbol_6 = str(symbol).zfill(6)
+        fetch_limit = limit or 10
+
+        # 1) 东方财富直连（默认首选）
+        try:
+            direct_df = self._get_stock_news_direct(symbol=symbol_6, limit=fetch_limit)
+            if direct_df is not None and not direct_df.empty:
+                self.logger.info(f"✅ {symbol_6} 东方财富直连新闻: {len(direct_df)} 条")
+                trimmed = direct_df.head(fetch_limit) if fetch_limit else direct_df
+                return trimmed, "eastmoney_direct"
+        except ImportError:
+            self.logger.warning(f"⚠️ {symbol_6} curl_cffi 未安装，跳过东方财富直连")
+        except Exception as exc:
+            self.logger.warning(f"⚠️ {symbol_6} 东方财富直连失败: {exc}")
+
+        # 2) AKShare 备用
+        self.logger.info(f"📰 {symbol_6} 东方财富直连无数据，尝试 AKShare stock_news_em...")
+        max_retries = 3
+        retry_delay = 1
+        news_df = None
+
+        for attempt in range(max_retries):
+            try:
+                news_df = ak.stock_news_em(symbol=symbol_6)
+                break
+            except json.JSONDecodeError as exc:
+                if attempt < max_retries - 1:
+                    self.logger.warning(
+                        f"⚠️ {symbol_6} AKShare 第{attempt + 1}次 JSON 解析失败，{retry_delay}s 后重试: {exc}"
+                    )
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    self.logger.error(f"❌ {symbol_6} AKShare JSON 解析失败: {exc}")
+                    return None, "akshare"
+            except KeyError as exc:
+                if str(exc) == "'cmsArticleWebOld'":
+                    self.logger.error(
+                        f"❌ {symbol_6} AKShare 接口结构异常(缺少 cmsArticleWebOld)，请优先使用东方财富直连"
+                    )
+                    return None, "akshare"
+                if attempt < max_retries - 1:
+                    self.logger.warning(
+                        f"⚠️ {symbol_6} AKShare 第{attempt + 1}次字段错误: {exc}，{retry_delay}s 后重试"
+                    )
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    self.logger.error(f"❌ {symbol_6} AKShare 字段错误: {exc}")
+                    return None, "akshare"
+            except Exception as exc:
+                if attempt < max_retries - 1:
+                    self.logger.warning(
+                        f"⚠️ {symbol_6} AKShare 第{attempt + 1}次失败: {exc}，{retry_delay}s 后重试"
+                    )
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    self.logger.error(f"❌ {symbol_6} AKShare 获取失败: {exc}")
+                    return None, "akshare"
+
+        if news_df is not None and not news_df.empty:
+            self.logger.info(f"✅ {symbol_6} AKShare 新闻: {len(news_df)} 条")
+            trimmed = news_df.head(fetch_limit) if fetch_limit else news_df
+            return trimmed, "akshare"
+
+        self.logger.warning(f"⚠️ {symbol_6} 东方财富直连与 AKShare 均未获取到新闻")
+        return None, "none"
+
     def _configure_timeout(self):
         """配置AKShare的超时设置"""
         try:
@@ -1206,9 +1286,71 @@ class AKShareProvider(BaseStockDataProvider):
                 "error": str(e)
             }
 
+    def get_stock_news_direct_sync(self, symbol: str, limit: int = 10) -> Optional[pd.DataFrame]:
+        """仅通过东方财富直连 API 获取个股新闻。"""
+        if not self.is_available() or not symbol:
+            return None
+        symbol_6 = str(symbol).zfill(6)
+        try:
+            news_df = self._get_stock_news_direct(symbol=symbol_6, limit=limit)
+            if news_df is not None and not news_df.empty:
+                return news_df.head(limit) if limit else news_df
+        except Exception as exc:
+            self.logger.warning(f"⚠️ {symbol_6} 东方财富直连失败: {exc}")
+        return None
+
+    def get_stock_news_akshare_sync(self, symbol: str, limit: int = 10) -> Optional[pd.DataFrame]:
+        """仅通过 AKShare stock_news_em 获取个股新闻（最后兜底）。"""
+        if not self.is_available() or not symbol:
+            return None
+
+        import akshare as ak
+        import json
+        import time
+
+        symbol_6 = str(symbol).zfill(6)
+        max_retries = 3
+        retry_delay = 1
+        news_df = None
+
+        for attempt in range(max_retries):
+            try:
+                news_df = ak.stock_news_em(symbol=symbol_6)
+                break
+            except json.JSONDecodeError as exc:
+                if attempt < max_retries - 1:
+                    self.logger.warning(
+                        f"⚠️ {symbol_6} AKShare 新闻 JSON 错误，{retry_delay}s 后重试: {exc}"
+                    )
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    self.logger.error(f"❌ {symbol_6} AKShare 新闻 JSON 解析失败: {exc}")
+                    return None
+            except KeyError as exc:
+                self.logger.warning(f"⚠️ {symbol_6} AKShare 新闻接口结构异常: {exc}")
+                return None
+            except Exception as exc:
+                if attempt < max_retries - 1:
+                    self.logger.warning(
+                        f"⚠️ {symbol_6} AKShare 新闻失败，{retry_delay}s 后重试: {exc}"
+                    )
+                    time.sleep(retry_delay)
+                    retry_delay *= 2
+                else:
+                    self.logger.error(f"❌ {symbol_6} AKShare 新闻失败: {exc}")
+                    return None
+
+        if news_df is not None and not news_df.empty:
+            self.logger.info(f"✅ {symbol_6} AKShare 新闻兜底成功: {len(news_df)} 条")
+            return news_df.head(limit) if limit else news_df
+        return None
+
     def get_stock_news_sync(self, symbol: str = None, limit: int = 10) -> Optional[pd.DataFrame]:
         """
         获取股票新闻（同步版本，返回原始 DataFrame）
+
+        个股顺序：东方财富直连 -> AKShare 兜底（Tavily 由上层 news 模块处理）
 
         Args:
             symbol: 股票代码，为None时获取市场新闻
@@ -1222,47 +1364,13 @@ class AKShareProvider(BaseStockDataProvider):
 
         try:
             import akshare as ak
-            import json
-            import time
 
             if symbol:
-                # 获取个股新闻
-                self.logger.debug(f"📰 获取AKShare个股新闻: {symbol}")
-
-                # 标准化股票代码
-                symbol_6 = symbol.zfill(6)
-
-                # 获取东方财富个股新闻，添加重试机制
-                max_retries = 3
-                retry_delay = 1  # 秒
-                news_df = None
-
-                for attempt in range(max_retries):
-                    try:
-                        news_df = ak.stock_news_em(symbol=symbol_6)
-                        break  # 成功则跳出重试循环
-                    except json.JSONDecodeError as e:
-                        if attempt < max_retries - 1:
-                            self.logger.warning(f"⚠️ {symbol} 第{attempt+1}次获取新闻失败(JSON解析错误)，{retry_delay}秒后重试...")
-                            time.sleep(retry_delay)
-                            retry_delay *= 2  # 指数退避
-                        else:
-                            self.logger.error(f"❌ {symbol} 获取新闻失败(JSON解析错误): {e}")
-                            return None
-                    except Exception as e:
-                        if attempt < max_retries - 1:
-                            self.logger.warning(f"⚠️ {symbol} 第{attempt+1}次获取新闻失败: {e}，{retry_delay}秒后重试...")
-                            time.sleep(retry_delay)
-                            retry_delay *= 2
-                        else:
-                            raise
-
+                symbol_6 = str(symbol).zfill(6)
+                news_df = self.get_stock_news_direct_sync(symbol_6, limit=limit)
                 if news_df is not None and not news_df.empty:
-                    self.logger.info(f"✅ {symbol} AKShare新闻获取成功: {len(news_df)} 条")
-                    return news_df.head(limit) if limit else news_df
-                else:
-                    self.logger.warning(f"⚠️ {symbol} 未获取到AKShare新闻数据")
-                    return None
+                    return news_df
+                return self.get_stock_news_akshare_sync(symbol_6, limit=limit)
             else:
                 # 获取市场新闻
                 self.logger.debug("📰 获取AKShare市场新闻")
@@ -1299,82 +1407,29 @@ class AKShareProvider(BaseStockDataProvider):
             import os
 
             if symbol:
-                # 获取个股新闻
-                self.logger.debug(f"📰 获取AKShare个股新闻: {symbol}")
-
-                # 标准化股票代码
                 symbol_6 = symbol.zfill(6)
-
-                # 检测是否在 Docker 环境中
-                is_docker = os.path.exists('/.dockerenv') or os.environ.get('DOCKER_CONTAINER') == 'true'
-
-                # 获取东方财富个股新闻，添加重试机制
-                max_retries = 3
-                retry_delay = 1  # 秒
                 news_df = None
+                data_source = "eastmoney_direct"
 
-                # 如果在 Docker 环境中，尝试使用 curl_cffi 直接调用 API
-                if is_docker:
-                    try:
-                        from curl_cffi import requests as curl_requests
-                        self.logger.debug(f"🐳 检测到 Docker 环境，使用 curl_cffi 直接调用 API")
-                        news_df = await asyncio.to_thread(
-                            self._get_stock_news_direct,
-                            symbol=symbol_6,
-                            limit=limit
-                        )
-                        if news_df is not None and not news_df.empty:
-                            self.logger.info(f"✅ {symbol} Docker 环境直接调用 API 成功")
-                        else:
-                            self.logger.warning(f"⚠️ {symbol} Docker 环境直接调用 API 失败，回退到 AKShare")
-                            news_df = None  # 回退到 AKShare
-                    except ImportError:
-                        self.logger.warning(f"⚠️ curl_cffi 未安装，回退到 AKShare")
-                        news_df = None
-                    except Exception as e:
-                        self.logger.warning(f"⚠️ {symbol} Docker 环境直接调用 API 异常: {e}，回退到 AKShare")
-                        news_df = None
+                # 1) 东方财富直连（默认优先）
+                try:
+                    news_df = await asyncio.to_thread(
+                        self.get_stock_news_direct_sync,
+                        symbol_6,
+                        limit,
+                    )
+                except Exception as exc:
+                    self.logger.warning(f"⚠️ {symbol_6} 东方财富直连异常: {exc}")
+                    news_df = None
 
-                # 如果直接调用失败或不在 Docker 环境，使用 AKShare
-                if news_df is None:
-                    for attempt in range(max_retries):
-                        try:
-                            news_df = await asyncio.to_thread(
-                                ak.stock_news_em,
-                                symbol=symbol_6
-                            )
-                            break  # 成功则跳出重试循环
-                        except json.JSONDecodeError as e:
-                            if attempt < max_retries - 1:
-                                self.logger.warning(f"⚠️ {symbol} 第{attempt+1}次获取新闻失败(JSON解析错误)，{retry_delay}秒后重试...")
-                                await asyncio.sleep(retry_delay)
-                                retry_delay *= 2  # 指数退避
-                            else:
-                                self.logger.error(f"❌ {symbol} 获取新闻失败(JSON解析错误): {e}")
-                                return []
-                        except KeyError as e:
-                            # 东方财富网接口变更或反爬虫拦截，返回的字段结构改变
-                            if str(e) == "'cmsArticleWebOld'":
-                                self.logger.error(f"❌ {symbol} AKShare新闻接口返回数据结构异常: 缺少 'cmsArticleWebOld' 字段")
-                                self.logger.error(f"   这通常是因为：1) 反爬虫拦截 2) 接口变更 3) 网络问题")
-                                self.logger.error(f"   建议：检查 AKShare 版本是否为最新 (当前要求 >=1.17.86)")
-                                # 返回空列表，避免程序崩溃
-                                return []
-                            else:
-                                if attempt < max_retries - 1:
-                                    self.logger.warning(f"⚠️ {symbol} 第{attempt+1}次获取新闻失败(字段错误): {e}，{retry_delay}秒后重试...")
-                                    await asyncio.sleep(retry_delay)
-                                    retry_delay *= 2
-                                else:
-                                    self.logger.error(f"❌ {symbol} 获取新闻失败(字段错误): {e}")
-                                    return []
-                        except Exception as e:
-                            if attempt < max_retries - 1:
-                                self.logger.warning(f"⚠️ {symbol} 第{attempt+1}次获取新闻失败: {e}，{retry_delay}秒后重试...")
-                                await asyncio.sleep(retry_delay)
-                                retry_delay *= 2
-                            else:
-                                raise
+                # 2) AKShare 最后兜底
+                if news_df is None or news_df.empty:
+                    data_source = "akshare"
+                    news_df = await asyncio.to_thread(
+                        self.get_stock_news_akshare_sync,
+                        symbol_6,
+                        limit,
+                    )
 
                 if news_df is not None and not news_df.empty:
                     news_list = []
@@ -1398,14 +1453,14 @@ class AKShareProvider(BaseStockDataProvider):
                             "sentiment_score": self._calculate_sentiment_score(content, title),
                             "keywords": self._extract_keywords(content, title),
                             "importance": self._assess_news_importance(content, title),
-                            "data_source": "akshare"
+                            "data_source": data_source
                         }
 
                         # 过滤空标题的新闻
                         if news_item["title"]:
                             news_list.append(news_item)
 
-                    self.logger.info(f"✅ {symbol} AKShare新闻获取成功: {len(news_list)} 条")
+                    self.logger.info(f"✅ {symbol} 个股新闻获取成功: {len(news_list)} 条 ({data_source})")
                     return news_list
                 else:
                     self.logger.warning(f"⚠️ {symbol} 未获取到AKShare新闻数据")

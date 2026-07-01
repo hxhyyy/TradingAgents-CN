@@ -40,10 +40,15 @@ def should_use_tavily(sections: List[str], market_info: Dict) -> bool:
     if not is_tavily_configured() or not is_tavily_enabled():
         return False
 
+    if any("Tavily" in (section or "") for section in sections):
+        return False
+
     useful_len = _useful_content_length(sections)
     if market_info.get("is_us") or market_info.get("is_crypto"):
-        # US / crypto benefit most from Tavily (analyst views, macro, BTC linkage)
         return True
+
+    if market_info.get("is_china"):
+        return useful_len < MIN_USEFUL_CONTENT_CHARS
 
     return useful_len < MIN_USEFUL_CONTENT_CHARS
 
